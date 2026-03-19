@@ -90,7 +90,7 @@ export default function DashboardLayout({
             </div>
             <nav className="py-3">
               <a href="/director" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
-                <span className="text-lg">🎯</span> Directo Rugby
+                <span className="text-lg">🎯</span> Director Rugby
               </a>
               <a href="/jornada" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span className="text-lg">📋</span> Fixture
