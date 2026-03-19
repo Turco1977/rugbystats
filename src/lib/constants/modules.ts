@@ -63,13 +63,14 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     color: "bg-gn",
     colorHover: "hover:bg-gn-dark",
     icon: "→",
+    hasPerspective: false,
     motivos: [
       { key: "QF", label: "Quiebre Franco", short: "QF" },
       { key: "E22", label: "Eficiencia 22", short: "E22" },
     ],
     resultados: [
-      { key: "puntos", label: "Puntos" },
-      { key: "perdida", label: "Pérdida" },
+      { key: "primera_fase", label: "Primera Fase" },
+      { key: "sistema", label: "Sistema" },
     ],
   },
   {
@@ -78,13 +79,14 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     color: "bg-pr",
     colorHover: "hover:bg-pr/80",
     icon: "🛡",
+    hasPerspective: false,
     motivos: [
       { key: "QF", label: "Quiebre Franco", short: "QF" },
       { key: "E22", label: "Eficiencia 22", short: "E22" },
     ],
     resultados: [
-      { key: "puntos", label: "Puntos" },
-      { key: "recuperada", label: "Recuperada" },
+      { key: "primera_fase", label: "Primera Fase" },
+      { key: "sistema", label: "Sistema" },
     ],
   },
   {

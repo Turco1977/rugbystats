@@ -14,6 +14,7 @@ export interface ModuleConfig {
   resultados: { key: string; label: string }[];
   hasRobo?: boolean;
   hasRecupero?: boolean;
+  hasPerspective?: boolean;
 }
 
 /** Pending event being built through the capture flow */

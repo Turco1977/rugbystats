@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
 import type { ModuloType, Perspectiva } from "@/lib/types/domain";
 import type { CaptureStep, QueuedEvent } from "@/lib/types/capture";
+import { MODULE_CONFIG } from "@/lib/constants/modules";
 
 /** Points per scoring detail */
 const POINTS_MAP: Record<string, number> = {
@@ -65,8 +66,15 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
   setStep: (step) => set({ step }),
 
-  selectModulo: (modulo) =>
-    set({ selectedModulo: modulo, step: "perspectiva" }),
+  selectModulo: (modulo) => {
+    const config = MODULE_CONFIG.find((m) => m.id === modulo);
+    if (config?.hasPerspective === false) {
+      // Skip perspectiva step, default to "propio"
+      set({ selectedModulo: modulo, selectedPerspectiva: "propio", step: "motivo" });
+    } else {
+      set({ selectedModulo: modulo, step: "perspectiva" });
+    }
+  },
 
   selectPerspectiva: (perspectiva) =>
     set({ selectedPerspectiva: perspectiva, step: "motivo" }),
