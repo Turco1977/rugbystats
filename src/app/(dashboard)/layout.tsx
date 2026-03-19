@@ -2,7 +2,9 @@
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
+import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const MODULE_NAV_ITEMS = MODULE_CONFIG.map((mod) => ({
   href: `/${mod.id === "SALIDA" ? "salidas" : mod.id.toLowerCase()}`,
@@ -18,6 +20,9 @@ export default function DashboardLayout({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dark, setDark] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem("rugbystats-dark");
@@ -25,7 +30,18 @@ export default function DashboardLayout({
       setDark(true);
       document.documentElement.classList.add("dark");
     }
-  }, []);
+
+    // Check auth
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUserEmail(data.user.email ?? null);
+      } else {
+        router.push("/");
+      }
+      setAuthChecked(true);
+    });
+  }, [router]);
 
   const toggleDark = () => {
     const next = !dark;
@@ -33,6 +49,20 @@ export default function DashboardLayout({
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("rugbystats-dark", String(next));
   };
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-g-1 dark:bg-dk-1">
+        <p className="text-g-4 animate-pulse">Cargando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-g-1 dark:bg-dk-1">
@@ -130,6 +160,15 @@ export default function DashboardLayout({
             <span className="badge bg-gn-bg text-gn-forest">
               Temporada 2026
             </span>
+            {userEmail && (
+              <button
+                onClick={handleLogout}
+                className="text-xs text-g-4 hover:text-rd transition-colors ml-1"
+                title="Cerrar sesión"
+              >
+                Salir
+              </button>
+            )}
           </div>
         </header>
 
