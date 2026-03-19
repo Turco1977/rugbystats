@@ -1,5 +1,5 @@
 "use client";
-
+// v2 - no demo data
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
