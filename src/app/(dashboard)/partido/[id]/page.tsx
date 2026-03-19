@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ModuleStats } from "@/components/dashboard/module-stats";
+import { MODULE_CONFIG } from "@/lib/constants/modules";
 import { EventFeed } from "@/components/dashboard/event-feed";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 
@@ -21,6 +21,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const [partido, setPartido] = useState<PartidoData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const realtimeEvents = useRealtimeEventos(id);
 
   useEffect(() => {
@@ -40,7 +41,6 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         setLoading(false);
       });
 
-    // Subscribe to score updates
     const channel = supabase
       .channel(`partido:${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "partidos", filter: `id=eq.${id}` }, (payload) => {
@@ -59,16 +59,17 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   }
 
   // Map events for feed
-  const feedEvents = realtimeEvents.slice(0, 20).map((ev) => ({
-    id: ev.id,
-    modulo: ev.modulo,
-    perspectiva: ev.perspectiva,
-    motivo: (ev.data as Record<string, string>)?.motivo || "",
-    resultado: (ev.data as Record<string, string>)?.resultado || (ev.data as Record<string, string>)?.detalle || "",
-    numero: ev.numero,
-    cargadoPor: ev.cargado_por,
-    timestamp: ev.timestamp,
-  }));
+  const mapEvents = (events: typeof realtimeEvents) =>
+    events.map((ev) => ({
+      id: ev.id,
+      modulo: ev.modulo,
+      perspectiva: ev.perspectiva,
+      motivo: (ev.data as Record<string, string>)?.motivo || "",
+      resultado: (ev.data as Record<string, string>)?.resultado || (ev.data as Record<string, string>)?.detalle || "",
+      numero: ev.numero,
+      cargadoPor: ev.cargado_por,
+      timestamp: ev.timestamp,
+    }));
 
   if (loading) {
     return (
@@ -92,6 +93,91 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const activeSession = partido.sessions?.find((s) => s.is_active);
   const isLive = partido.status === "live";
 
+  // Module detail view
+  if (selectedModule) {
+    const mod = MODULE_CONFIG.find((m) => m.id === selectedModule);
+    const moduleEvents = realtimeEvents.filter((ev) => ev.modulo === selectedModule);
+    const modStats = stats[selectedModule] || { propio: 0, rival: 0 };
+
+    return (
+      <div>
+        <button
+          onClick={() => setSelectedModule(null)}
+          className="text-xs text-g-4 hover:text-nv mb-4 flex items-center gap-1"
+        >
+          ← Volver al partido
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">{mod?.icon}</span>
+          <div>
+            <h2 className="text-lg font-bold text-nv">{mod?.label}</h2>
+            <p className="text-xs text-g-4">
+              {localName} vs {visitanteName} — {partido.division}
+            </p>
+          </div>
+        </div>
+
+        {/* Module summary */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="card-compact text-center">
+            <p className="text-[10px] text-g-4 font-semibold uppercase">Total</p>
+            <p className="text-2xl font-extrabold text-nv">{modStats.propio + modStats.rival}</p>
+          </div>
+          <div className="card-compact text-center">
+            <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
+            <p className="text-2xl font-extrabold text-gn">{modStats.propio}</p>
+          </div>
+          <div className="card-compact text-center">
+            <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
+            <p className="text-2xl font-extrabold text-rd">{modStats.rival}</p>
+          </div>
+        </div>
+
+        {/* Breakdown by motivo */}
+        <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+          Desglose por motivo
+        </h3>
+        <div className="space-y-2 mb-6">
+          {Object.entries(
+            moduleEvents.reduce<Record<string, { count: number; results: Record<string, number> }>>((acc, ev) => {
+              const motivo = (ev.data as Record<string, string>)?.motivo || "—";
+              const resultado = (ev.data as Record<string, string>)?.resultado || "—";
+              if (!acc[motivo]) acc[motivo] = { count: 0, results: {} };
+              acc[motivo].count++;
+              acc[motivo].results[resultado] = (acc[motivo].results[resultado] || 0) + 1;
+              return acc;
+            }, {})
+          ).map(([motivo, data]) => (
+            <div key={motivo} className="card-compact">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-nv uppercase">{motivo}</span>
+                <span className="text-xs font-bold text-g-4">{data.count}</span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {Object.entries(data.results).map(([res, count]) => (
+                  <span key={res} className="text-[10px] bg-dk-2 text-g-4 px-2 py-0.5 rounded">
+                    {res}: {count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          {moduleEvents.length === 0 && (
+            <p className="text-g-3 text-xs text-center py-4">Sin eventos en este módulo</p>
+          )}
+        </div>
+
+        {/* Module events feed */}
+        <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+          Eventos de {mod?.label}
+        </h3>
+        <EventFeed events={mapEvents(moduleEvents)} />
+      </div>
+    );
+  }
+
+  // Main partido view
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -128,7 +214,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
       </div>
 
       {activeSession?.code && (
-        <div className="flex items-center gap-2 mb-4 p-2.5 bg-white rounded border border-g-2">
+        <div className="flex items-center gap-2 mb-4 p-2.5 bg-dk-2 rounded border border-dk-3">
           <span className="text-[10px] text-g-4 font-semibold">Eventos: {realtimeEvents.length}</span>
           <span className="ml-auto font-mono text-[10px] text-g-3">
             Código: <strong className="text-nv">{activeSession.code}</strong>
@@ -136,14 +222,45 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
+      {/* Clickable module cards */}
       <div className="mb-6">
         <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-          Estadísticas por Módulo — Propio vs Rival
+          Estadísticas por Módulo — Tocá para ver detalle
         </h3>
-        <ModuleStats stats={stats} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {MODULE_CONFIG.map((mod) => {
+            const data = stats[mod.id] || { propio: 0, rival: 0 };
+            const total = data.propio + data.rival;
+            const propioPercent = total > 0 ? Math.round((data.propio / total) * 100) : 0;
+
+            return (
+              <button
+                key={mod.id}
+                onClick={() => setSelectedModule(mod.id)}
+                className="card-compact text-left hover:ring-2 hover:ring-nv transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">{mod.icon}</span>
+                  <span className="text-[10px] font-bold text-g-4 uppercase tracking-wider">
+                    {mod.label}
+                  </span>
+                </div>
+                <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-g-1 mb-2">
+                  <div className="bg-gn rounded-l-full transition-all" style={{ width: `${propioPercent}%` }} />
+                  <div className="bg-rd rounded-r-full transition-all" style={{ width: `${100 - propioPercent}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px]">
+                  <span className="font-bold text-gn-dark">P: {data.propio}</span>
+                  <span className="font-bold text-rd">R: {data.rival}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <EventFeed events={feedEvents} />
+      {/* Feed */}
+      <EventFeed events={mapEvents(realtimeEvents.slice(0, 30))} />
     </div>
   );
 }
