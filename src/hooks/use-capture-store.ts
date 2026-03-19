@@ -89,7 +89,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
       return;
 
     // If "puntos" selected, go to detalle step to pick try/penal/drop
-    if (resultado === "puntos") {
+    // If PIE "eficiente" or "ganado", go to detalle for campo/recupero
+    if (resultado === "puntos" || (state.selectedModulo === "PIE" && (resultado === "eficiente" || resultado === "ganado"))) {
       set({ selectedResultado: resultado, step: "detalle" });
       return;
     }

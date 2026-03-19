@@ -115,16 +115,25 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     color: "bg-nv-light",
     colorHover: "hover:bg-nv",
     icon: "🦶",
+    hasPerspective: false,
     motivos: [
-      { key: "C", label: "Campo", short: "C" },
-      { key: "R", label: "Recupero", short: "R" },
-      { key: "Penal", label: "Penal", short: "PEN" },
-      { key: "FreeKick", label: "Free Kick", short: "FK" },
+      { key: "PEN_FK", label: "Penal / Free Kick", short: "PEN/FK" },
+      { key: "TACTICO", label: "Táctico", short: "TAC" },
     ],
     resultados: [
       { key: "eficiente", label: "Eficiente" },
       { key: "deficitario", label: "Deficitario" },
     ],
+    motivoResultados: {
+      PEN_FK: [
+        { key: "eficiente", label: "Eficiente" },
+        { key: "deficitario", label: "Deficitario" },
+      ],
+      TACTICO: [
+        { key: "ganado", label: "Ganado" },
+        { key: "perdido", label: "Perdido" },
+      ],
+    },
   },
 ];
 
@@ -134,6 +143,12 @@ export const PUNTOS_DETALLE = [
   { key: "try", label: "Try", points: 5 },
   { key: "penal", label: "Penal", points: 3 },
   { key: "drop", label: "Drop", points: 3 },
+];
+
+/** Sub-options for PIE eficiente/ganado → Campo/Recupero */
+export const PIE_DETALLE = [
+  { key: "campo", label: "Campo" },
+  { key: "recupero", label: "Recupero" },
 ];
 
 export const PERSPECTIVA_OPTIONS = [
