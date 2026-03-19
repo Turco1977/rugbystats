@@ -59,9 +59,13 @@ export default function CapturaSessionPage({
       {/* Header */}
       <header className="flex items-center justify-between bg-nv px-4 py-2.5 shadow-card-sm">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
-            🏉
-          </div>
+          <a
+            href="/"
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs hover:bg-white/20 transition-colors"
+            title="Salir"
+          >
+            ←
+          </a>
           <div>
             {matchInfo ? (
               <>
