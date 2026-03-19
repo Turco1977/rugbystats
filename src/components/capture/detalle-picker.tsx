@@ -37,7 +37,7 @@ export function DetallePicker() {
           <button
             key={d.key}
             onClick={() => {
-              selectDetalle(d.key, "points" in d ? d.points : 0);
+              selectDetalle(d.key, "points" in d ? (d as { points: number }).points : 0);
               if (typeof navigator !== "undefined" && navigator.vibrate) {
                 navigator.vibrate(100);
               }
@@ -48,7 +48,7 @@ export function DetallePicker() {
           >
             <span className="block text-lg">{d.label}</span>
             {"points" in d && (
-              <span className="block text-xs opacity-75 mt-1">{d.points} pts</span>
+              <span className="block text-xs opacity-75 mt-1">{(d as { points: number }).points} pts</span>
             )}
           </button>
         ))}

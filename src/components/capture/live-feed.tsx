@@ -1,13 +1,26 @@
 "use client";
 
 import { useCaptureStore } from "@/hooks/use-capture-store";
+import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 
 export function LiveFeed() {
-  const events = useCaptureStore((s) => s.events);
-  const latest = events.slice(0, 5);
+  const partidoId = useCaptureStore((s) => s.partidoId);
+  const realtimeEvents = useRealtimeEventos(partidoId);
 
-  if (latest.length === 0) {
+  // Map realtime events to feed format
+  const feedEvents = realtimeEvents.slice(0, 10).map((ev) => ({
+    id: ev.id,
+    modulo: ev.modulo,
+    perspectiva: ev.perspectiva,
+    motivo: (ev.data as Record<string, string>)?.motivo || "",
+    resultado: (ev.data as Record<string, string>)?.resultado || (ev.data as Record<string, string>)?.detalle || "",
+    timestamp: ev.timestamp,
+    numero: ev.numero,
+    cargadoPor: ev.cargado_por,
+  }));
+
+  if (feedEvents.length === 0) {
     return (
       <div className="border-b border-dk-3 px-4 py-2 text-[10px] text-dk-4">
         Feed en vivo — sin eventos todavía
@@ -17,7 +30,7 @@ export function LiveFeed() {
 
   return (
     <div className="border-b border-dk-3 max-h-[120px] overflow-y-auto">
-      {latest.map((ev) => {
+      {feedEvents.map((ev) => {
         const mod = MODULE_CONFIG.find((m) => m.id === ev.modulo);
         const motivoLabel =
           mod?.motivos.find((m) => m.key === ev.motivo)?.short || ev.motivo;
