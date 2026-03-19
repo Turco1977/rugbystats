@@ -62,32 +62,28 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     return PLANTELES.find((pl) => pl.key === selectedPlantel) ?? null;
   };
 
-  // Find or create Tordos team for this plantel
-  const getOrCreateTordosId = async (): Promise<string | null> => {
+  // Find Tordos team matching the plantel suffix (A, B, C)
+  const findTordosTeamId = (): string | null => {
     if (!selectedPlantel) return null;
-    const plantel = getPlantelInfo();
-    if (!plantel) return null;
-
-    const supabase = createClient();
     const suffix = selectedPlantel.slice(-1); // A, B, or C
 
-    // Try finding existing Tordos team ending with this letter
-    const tordosTeam = teams.find(
+    // Match by short_name: "Tordos A", "Tordos B", "Tordos C"
+    const exact = teams.find(
+      (t) => t.short_name.toLowerCase() === `tordos ${suffix.toLowerCase()}`
+    );
+    if (exact) return exact.id;
+
+    // Fallback: any team with "tordos" and ending in the suffix letter
+    const fallback = teams.find(
       (t) =>
         t.name.toLowerCase().includes("tordos") &&
-        (t.name.toUpperCase().endsWith(` ${suffix}`) || t.short_name.toUpperCase().endsWith(` ${suffix}`))
+        t.name.trim().toUpperCase().slice(-1) === suffix
     );
-    if (tordosTeam) return tordosTeam.id;
+    if (fallback) return fallback.id;
 
-    // Create if not found
-    const fullName = `Los Tordos ${plantel.label}`;
-    const { data: newTeam, error } = await supabase
-      .from("teams")
-      .insert({ name: fullName, short_name: `Tordos ${plantel.label}` })
-      .select("id")
-      .single();
-    if (error) return null;
-    return newTeam.id;
+    // Last resort: first tordos team
+    const any = teams.find((t) => t.name.toLowerCase().includes("tordos"));
+    return any?.id ?? null;
   };
 
   // Find or create rival team by name
@@ -124,9 +120,9 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     try {
       const supabase = createClient();
 
-      // 1. Get or create both teams
-      const tordosId = await getOrCreateTordosId();
-      if (!tordosId) throw new Error("No se pudo encontrar/crear equipo Tordos");
+      // 1. Find Tordos team + get or create rival
+      const tordosId = findTordosTeamId();
+      if (!tordosId) throw new Error("No se encontró equipo Tordos en la base de datos");
 
       const rivalId = await getOrCreateRivalId(rivalName);
       if (!rivalId) throw new Error("No se pudo crear el equipo rival");
