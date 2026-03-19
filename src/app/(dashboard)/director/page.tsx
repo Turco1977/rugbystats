@@ -78,6 +78,18 @@ export default function DirectorPage() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
+  const handleDeletePartido = async (partidoId: string) => {
+    if (!confirm("¿Estás seguro de eliminar este partido?")) return;
+    const supabase = createClient();
+    // Delete sessions first, then partido
+    await supabase.from("events").delete().eq("session_id",
+      (await supabase.from("sessions").select("id").eq("partido_id", partidoId)).data?.map(s => s.id)?.[0] || ""
+    );
+    await supabase.from("sessions").delete().eq("partido_id", partidoId);
+    await supabase.from("partidos").delete().eq("id", partidoId);
+    fetchPartidos();
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -126,7 +138,14 @@ export default function DirectorPage() {
                   const localName = p.equipo_local?.short_name || p.equipo_local?.name || "—";
                   const visitanteName = p.equipo_visitante?.short_name || p.equipo_visitante?.name || "—";
                   return (
-                    <div key={p.id}>
+                    <div key={p.id} className="relative">
+                      <button
+                        onClick={() => handleDeletePartido(p.id)}
+                        className="absolute -top-2 -right-2 z-10 bg-rd text-white w-7 h-7 rounded-full text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center"
+                        title="Eliminar partido"
+                      >
+                        ✕
+                      </button>
                       <MatchCard
                         id={p.id}
                         division={p.division}
@@ -171,7 +190,14 @@ export default function DirectorPage() {
               </h3>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {scheduledPartidos.map((p) => (
-                  <div key={p.id}>
+                  <div key={p.id} className="relative">
+                    <button
+                      onClick={() => handleDeletePartido(p.id)}
+                      className="absolute -top-2 -right-2 z-10 bg-rd text-white w-7 h-7 rounded-full text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center"
+                      title="Eliminar partido"
+                    >
+                      ✕
+                    </button>
                     <MatchCard
                       id={p.id}
                       division={p.division}
