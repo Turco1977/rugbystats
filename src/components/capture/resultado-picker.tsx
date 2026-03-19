@@ -3,6 +3,18 @@
 import { useCaptureStore } from "@/hooks/use-capture-store";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 
+// When perspective is "rival" and module has robo, show these instead
+const ROBO_RESULTADOS = [
+  { key: "robado", label: "Robado" },
+  { key: "perdido", label: "Perdido" },
+];
+
+// When perspective is "rival" and module has recupero, show these instead
+const RECUPERO_RESULTADOS = [
+  { key: "recuperada", label: "Recuperada" },
+  { key: "perdida", label: "Perdida" },
+];
+
 export function ResultadoPicker() {
   const selectResultado = useCaptureStore((s) => s.selectResultado);
   const selectedModulo = useCaptureStore((s) => s.selectedModulo);
@@ -17,6 +29,16 @@ export function ResultadoPicker() {
     moduleConfig.motivos.find((m) => m.key === selectedMotivo)?.label ||
     selectedMotivo;
 
+  // Choose resultados based on perspective + module type
+  let resultados = moduleConfig.resultados;
+  if (selectedPerspectiva === "rival") {
+    if (moduleConfig.hasRobo) {
+      resultados = ROBO_RESULTADOS;
+    } else if (moduleConfig.hasRecupero) {
+      resultados = RECUPERO_RESULTADOS;
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
       <div className="text-center">
@@ -27,10 +49,12 @@ export function ResultadoPicker() {
       </div>
 
       <div className="flex gap-4 w-full max-w-xs">
-        {moduleConfig.resultados.map((res) => {
+        {resultados.map((res) => {
           const isPositive =
             res.key === "obtenido" ||
             res.key === "obtenida" ||
+            res.key === "robado" ||
+            res.key === "recuperada" ||
             res.key === "puntos" ||
             res.key === "exitosa" ||
             res.key === "eficiente";
@@ -40,7 +64,6 @@ export function ResultadoPicker() {
               key={res.key}
               onClick={() => {
                 selectResultado(res.key);
-                // Trigger vibration if available (mobile)
                 if (typeof navigator !== "undefined" && navigator.vibrate) {
                   navigator.vibrate(100);
                 }
