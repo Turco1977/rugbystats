@@ -62,16 +62,32 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     return PLANTELES.find((pl) => pl.key === selectedPlantel) ?? null;
   };
 
-  // Find Tordos team ID matching the plantel letter
-  const getTordosTeamId = () => {
+  // Find or create Tordos team for this plantel
+  const getOrCreateTordosId = async (): Promise<string | null> => {
     if (!selectedPlantel) return null;
+    const plantel = getPlantelInfo();
+    if (!plantel) return null;
+
+    const supabase = createClient();
     const suffix = selectedPlantel.slice(-1); // A, B, or C
+
+    // Try finding existing Tordos team ending with this letter
     const tordosTeam = teams.find(
       (t) =>
         t.name.toLowerCase().includes("tordos") &&
-        t.name.toUpperCase().endsWith(suffix)
+        (t.name.toUpperCase().endsWith(` ${suffix}`) || t.short_name.toUpperCase().endsWith(` ${suffix}`))
     );
-    return tordosTeam?.id ?? null;
+    if (tordosTeam) return tordosTeam.id;
+
+    // Create if not found
+    const fullName = `Los Tordos ${plantel.label}`;
+    const { data: newTeam, error } = await supabase
+      .from("teams")
+      .insert({ name: fullName, short_name: `Tordos ${plantel.label}` })
+      .select("id")
+      .single();
+    if (error) return null;
+    return newTeam.id;
   };
 
   // Find or create rival team by name
@@ -102,14 +118,16 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
 
   const handleCreate = async () => {
     const plantel = getPlantelInfo();
-    const tordosId = getTordosTeamId();
-    if (!plantel || !tordosId || !rivalName.trim()) return;
+    if (!plantel || !rivalName.trim()) return;
 
     setLoading(true);
     try {
       const supabase = createClient();
 
-      // 1. Get or create rival team
+      // 1. Get or create both teams
+      const tordosId = await getOrCreateTordosId();
+      if (!tordosId) throw new Error("No se pudo encontrar/crear equipo Tordos");
+
       const rivalId = await getOrCreateRivalId(rivalName);
       if (!rivalId) throw new Error("No se pudo crear el equipo rival");
 
