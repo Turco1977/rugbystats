@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MatchCard } from "@/components/dashboard/match-card";
@@ -21,7 +21,15 @@ interface PartidoRow {
 
 const APP_URL = typeof window !== "undefined" ? window.location.origin : "https://rugbystats-five.vercel.app";
 
-export default function EntrenadorPage() {
+export default function EntrenadorPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-dk-1 flex items-center justify-center"><p className="text-dk-4 animate-pulse">Cargando...</p></div>}>
+      <EntrenadorPage />
+    </Suspense>
+  );
+}
+
+function EntrenadorPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const division = searchParams.get("div") || "M19";
