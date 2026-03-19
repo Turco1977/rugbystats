@@ -147,7 +147,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
         const trimmed = rivalName.trim();
         const { data: newTeam, error: tErr } = await supabase
           .from("teams")
-          .insert({ name: trimmed, short_name: trimmed, club: trimmed })
+          .insert({ name: trimmed, short_name: trimmed })
           .select("id")
           .single();
         if (tErr) {
