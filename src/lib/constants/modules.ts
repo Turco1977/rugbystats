@@ -117,8 +117,8 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     icon: "🦶",
     hasPerspective: false,
     motivos: [
-      { key: "PEN_FK", label: "Penal / Free Kick", short: "PEN/FK" },
-      { key: "TACTICO", label: "Táctico", short: "TAC" },
+      { key: "PEN_FK", label: "P/FK", short: "Penal / Free Kick" },
+      { key: "TACTICO", label: "T", short: "Táctico" },
     ],
     resultados: [
       { key: "eficiente", label: "Eficiente" },

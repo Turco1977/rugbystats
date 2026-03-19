@@ -21,6 +21,7 @@ export function DetallePicker() {
   let btnColor: string;
   if (isAtaque) btnColor = "bg-gn";
   else if (selectedModulo === "DEFENSA") btnColor = "bg-rd";
+  else if (isPie && (selectedResultado === "ganado" || selectedResultado === "eficiente")) btnColor = "bg-gn";
   else btnColor = "bg-nv";
 
   return (

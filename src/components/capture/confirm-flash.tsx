@@ -20,7 +20,10 @@ export function ConfirmFlash() {
       selectedResultado === "recuperada" ||
       selectedResultado === "puntos" ||
       selectedResultado === "exitosa" ||
-      selectedResultado === "eficiente";
+      selectedResultado === "eficiente" ||
+      selectedResultado === "ganado" ||
+      selectedResultado === "campo" ||
+      selectedResultado === "recupero";
   }
 
   return (

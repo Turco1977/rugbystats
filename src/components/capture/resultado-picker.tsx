@@ -66,7 +66,8 @@ export function ResultadoPicker() {
               res.key === "recuperada" ||
               res.key === "puntos" ||
               res.key === "exitosa" ||
-              res.key === "eficiente";
+              res.key === "eficiente" ||
+              res.key === "ganado";
             btnColor = isPositive ? "bg-gn" : "bg-rd";
           }
 
