@@ -141,11 +141,20 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
         return;
       }
 
-      const rivalId = findRivalTeamId(rivalName);
+      let rivalId = findRivalTeamId(rivalName);
       if (!rivalId) {
-        const available = rivalTeams.map((t) => t.short_name).join(", ");
-        setErrorMsg(`No se encontró "${rivalName}". Equipos disponibles: ${available}`);
-        return;
+        // Create new team with the name provided
+        const trimmed = rivalName.trim();
+        const { data: newTeam, error: tErr } = await supabase
+          .from("teams")
+          .insert({ name: trimmed, short_name: trimmed, club: trimmed })
+          .select("id")
+          .single();
+        if (tErr) {
+          setErrorMsg(`No se pudo crear equipo "${trimmed}": ${tErr.message}`);
+          return;
+        }
+        rivalId = newTeam.id;
       }
 
       // 2. Find or create jornada for this date
