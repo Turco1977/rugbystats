@@ -64,14 +64,12 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     colorHover: "hover:bg-gn-dark",
     icon: "→",
     motivos: [
-      { key: "try", label: "Try", short: "TRY" },
-      { key: "penal", label: "Penal", short: "PEN" },
-      { key: "drop", label: "Drop Goal", short: "DG" },
-      { key: "perdida", label: "Pérdida", short: "PER" },
+      { key: "QF", label: "Quiebre Franco", short: "QF" },
+      { key: "E22", label: "Eficiencia 22", short: "E22" },
     ],
     resultados: [
-      { key: "puntos", label: "Con puntos" },
-      { key: "sin_puntos", label: "Sin puntos" },
+      { key: "puntos", label: "Puntos" },
+      { key: "perdida", label: "Pérdida" },
     ],
   },
   {
@@ -81,14 +79,12 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     colorHover: "hover:bg-pr/80",
     icon: "🛡",
     motivos: [
-      { key: "tackle", label: "Tackle", short: "TAC" },
-      { key: "recupero", label: "Recupero", short: "REC" },
-      { key: "infraccion", label: "Infracción", short: "INF" },
-      { key: "try_recibido", label: "Try recibido", short: "TRY-" },
+      { key: "QF", label: "Quiebre Franco", short: "QF" },
+      { key: "E22", label: "Eficiencia 22", short: "E22" },
     ],
     resultados: [
-      { key: "exitosa", label: "Exitosa" },
-      { key: "quebrada", label: "Quebrada" },
+      { key: "puntos", label: "Puntos" },
+      { key: "recuperada", label: "Recuperada" },
     ],
   },
   {
