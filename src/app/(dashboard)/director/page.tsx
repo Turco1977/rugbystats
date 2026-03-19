@@ -82,7 +82,7 @@ export default function DirectorPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-nv">Director Deportivo</h2>
+          <h2 className="text-xl font-bold text-nv">Directo Rugby</h2>
           <p className="text-sm text-g-4 mt-0.5">
             Partidos en curso y programados — Temporada 2026
           </p>
