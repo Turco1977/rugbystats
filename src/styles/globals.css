@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --nv: #0A1628;
+    --rd: #C8102E;
+    --gn: #10B981;
+    --yl: #F59E0B;
+  }
+
+  body {
+    @apply bg-g-1 text-nv antialiased font-sans;
+    font-size: 13px;
+  }
+}
+
+@layer components {
+  .touch-target {
+    @apply min-h-[56px] min-w-[56px] flex items-center justify-center;
+  }
+
+  .capture-btn {
+    @apply rounded-lg font-semibold text-white text-base
+           min-h-[80px] flex flex-col items-center justify-center gap-1
+           active:scale-95 transition-transform duration-100
+           shadow-card-sm select-none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .badge {
+    @apply inline-block px-2 py-0.5 rounded-sm text-[9px] font-semibold whitespace-nowrap;
+  }
+
+  .card {
+    @apply bg-white rounded-lg border border-g-2 shadow-card p-[18px];
+  }
+
+  .card-compact {
+    @apply bg-white rounded-md border border-g-2 shadow-card-sm px-3.5 py-3;
+  }
+
+  .counter-pill {
+    @apply inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-xs font-bold;
+  }
+
+  .feed-item {
+    @apply flex items-start gap-3 py-2.5 px-3 border-b border-g-2 text-xs;
+  }
+}
