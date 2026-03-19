@@ -142,13 +142,22 @@ export default function DirectorPage() {
                   const visitanteName = p.equipo_visitante?.short_name || p.equipo_visitante?.name || "—";
                   return (
                     <div key={p.id} className="relative">
-                      <button
-                        onClick={() => handleDeletePartido(p.id)}
-                        className="absolute -top-2 -right-2 z-10 bg-rd text-white w-7 h-7 rounded-full text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center"
-                        title="Eliminar partido"
-                      >
-                        ✕
-                      </button>
+                      <div className="absolute -top-2 -right-2 z-10 flex gap-1">
+                        <button
+                          onClick={() => { /* TODO: edit modal */ }}
+                          className="bg-bl text-white w-7 h-7 rounded-full text-xs hover:bg-blue-600 transition-colors flex items-center justify-center"
+                          title="Editar partido"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeletePartido(p.id)}
+                          className="bg-rd text-white w-7 h-7 rounded-full text-xs hover:bg-red-700 transition-colors flex items-center justify-center"
+                          title="Eliminar partido"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                       <MatchCard
                         id={p.id}
                         division={p.division}
