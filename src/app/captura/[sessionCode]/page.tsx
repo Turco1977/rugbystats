@@ -24,9 +24,20 @@ export default function CapturaSessionPage({
   const undoStack = useCaptureStore((s) => s.undoStack);
   const matchInfo = useCaptureStore((s) => s.matchInfo);
   const joinSessionByCode = useCaptureStore((s) => s.joinSessionByCode);
+  const puntosLocal = useCaptureStore((s) => s.puntosLocal);
+  const puntosVisitante = useCaptureStore((s) => s.puntosVisitante);
+  const cerrarPartido = useCaptureStore((s) => s.cerrarPartido);
 
   const [joining, setJoining] = useState(true);
   const [error, setError] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  const handleCerrar = async () => {
+    if (!confirm("¿Cerrar partido? Se marcará como finalizado.")) return;
+    setClosing(true);
+    await cerrarPartido();
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     const name = searchParams.get("name") || "Anónimo";
@@ -69,7 +80,9 @@ export default function CapturaSessionPage({
                   {matchInfo.division}
                 </span>
                 <p className="text-xs font-bold leading-tight">
-                  {matchInfo.local} vs {matchInfo.visitante}
+                  {matchInfo.local} <span className="text-gn text-lg font-extrabold mx-1">{puntosLocal}</span>
+                  <span className="text-dk-4 text-xs">-</span>
+                  <span className="text-rd text-lg font-extrabold mx-1">{puntosVisitante}</span> {matchInfo.visitante}
                 </p>
               </>
             ) : (
@@ -129,6 +142,13 @@ export default function CapturaSessionPage({
             <span className="w-1.5 h-1.5 rounded-full bg-gn animate-pulse" />
             En vivo
           </span>
+          <button
+            onClick={handleCerrar}
+            disabled={closing}
+            className="bg-rd/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-rd transition-colors disabled:opacity-50"
+          >
+            {closing ? "Cerrando..." : "Cerrar Partido"}
+          </button>
         </div>
       </footer>
     </main>
