@@ -22,7 +22,7 @@ const APP_URL = typeof window !== "undefined" ? window.location.origin : "https:
 export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
   const [selectedPlantel, setSelectedPlantel] = useState<string | null>(null);
-  const [rivalId, setRivalId] = useState("");
+  const [rivalName, setRivalName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
   const reset = () => {
     setStep("form");
     setSelectedPlantel(null);
-    setRivalId("");
+    setRivalName("");
     setDate(new Date().toISOString().split("T")[0]);
     setCopiedCode(false);
     setResultCode("");
@@ -57,25 +57,14 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     onClose();
   };
 
-  // Filter rivals: exclude Tordos teams
-  const rivals = teams.filter(
-    (t) => !t.name.toLowerCase().includes("tordos") && t.name !== "LIBRE"
-  );
-
-  // Find the Tordos team for the selected plantel
   const getPlantelInfo = () => {
     if (!selectedPlantel) return null;
-    const p = PLANTELES.find((pl) => pl.key === selectedPlantel);
-    return p ?? null;
+    return PLANTELES.find((pl) => pl.key === selectedPlantel) ?? null;
   };
 
-  // Find Tordos team ID matching the plantel
+  // Find Tordos team ID matching the plantel letter
   const getTordosTeamId = () => {
     if (!selectedPlantel) return null;
-    const plantel = getPlantelInfo();
-    if (!plantel) return null;
-
-    // Match based on plantel key: M19A → "Tordos A", M19B → "Tordos B", etc.
     const suffix = selectedPlantel.slice(-1); // A, B, or C
     const tordosTeam = teams.find(
       (t) =>
@@ -85,16 +74,46 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     return tordosTeam?.id ?? null;
   };
 
+  // Find or create rival team by name
+  const getOrCreateRivalId = async (name: string): Promise<string | null> => {
+    const supabase = createClient();
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+
+    // Search existing
+    const { data: existing } = await supabase
+      .from("teams")
+      .select("id")
+      .ilike("name", trimmed)
+      .maybeSingle();
+
+    if (existing) return existing.id;
+
+    // Create new team
+    const { data: newTeam, error } = await supabase
+      .from("teams")
+      .insert({ name: trimmed, short_name: trimmed })
+      .select("id")
+      .single();
+
+    if (error) return null;
+    return newTeam.id;
+  };
+
   const handleCreate = async () => {
     const plantel = getPlantelInfo();
     const tordosId = getTordosTeamId();
-    if (!plantel || !tordosId || !rivalId) return;
+    if (!plantel || !tordosId || !rivalName.trim()) return;
 
     setLoading(true);
     try {
       const supabase = createClient();
 
-      // 1. Find or create jornada for this date
+      // 1. Get or create rival team
+      const rivalId = await getOrCreateRivalId(rivalName);
+      if (!rivalId) throw new Error("No se pudo crear el equipo rival");
+
+      // 2. Find or create jornada for this date
       const jornadaName = `Fecha ${date}`;
       let jornadaId: string;
 
@@ -116,7 +135,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
         jornadaId = newJ.id;
       }
 
-      // 2. Create partido
+      // 3. Create partido
       const { data: partido, error: pErr } = await supabase
         .from("partidos")
         .insert({
@@ -130,7 +149,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
         .single();
       if (pErr) throw pErr;
 
-      // 3. Generate code & create session
+      // 4. Generate code & create session
       const code = generateSessionCode();
       await supabase.from("sessions").insert({
         partido_id: partido.id,
@@ -138,11 +157,10 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
         created_by: "Director",
       });
 
-      // 4. Show result
-      const rivalTeam = teams.find((t) => t.id === rivalId);
+      // 5. Show result
       setResultCode(code);
       setResultPlantel(plantel.label);
-      setResultRival(rivalTeam?.short_name || rivalTeam?.name || "Rival");
+      setResultRival(rivalName.trim());
       setStep("result");
       onCreated();
     } catch (err) {
@@ -172,7 +190,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-nv/60" onClick={handleClose}>
       <div
-        className="bg-white rounded-lg shadow-modal w-full max-w-md mx-4 overflow-hidden"
+        className="bg-white rounded-lg shadow-modal w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {step === "form" ? (
@@ -217,29 +235,24 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                 </div>
               )}
 
-              {/* Rival dropdown */}
+              {/* Rival - text input */}
               <div>
                 <label className="text-xs font-bold text-g-4 uppercase tracking-wider block mb-2">
                   Rival
                 </label>
-                <select
-                  value={rivalId}
-                  onChange={(e) => setRivalId(e.target.value)}
+                <input
+                  type="text"
+                  value={rivalName}
+                  onChange={(e) => setRivalName(e.target.value)}
+                  placeholder="Ej: Peumayen, Marista, Liceo..."
                   className="w-full border border-g-3 rounded-md px-3 py-2.5 text-sm bg-white"
-                >
-                  <option value="">Seleccionar rival...</option>
-                  {rivals.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               {/* Date */}
               <div>
                 <label className="text-xs font-bold text-g-4 uppercase tracking-wider block mb-2">
-                  Fecha
+                  Fecha del partido
                 </label>
                 <input
                   type="date"
@@ -252,7 +265,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
               {/* Create button */}
               <button
                 onClick={handleCreate}
-                disabled={!selectedPlantel || !rivalId || loading}
+                disabled={!selectedPlantel || !rivalName.trim() || loading}
                 className="w-full bg-gn text-white text-sm font-bold py-3 rounded-md hover:bg-gn-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? "Creando..." : "Crear Partido y Generar Código"}
