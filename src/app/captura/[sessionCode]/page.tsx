@@ -59,13 +59,9 @@ export default function CapturaSessionPage({
       {/* Header */}
       <header className="flex items-center justify-between bg-nv px-4 py-2.5 shadow-card-sm">
         <div className="flex items-center gap-3">
-          <a
-            href="/"
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs hover:bg-white/20 transition-colors"
-            title="Salir"
-          >
-            ←
-          </a>
+          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
+            🏉
+          </div>
           <div>
             {matchInfo ? (
               <>
@@ -98,11 +94,14 @@ export default function CapturaSessionPage({
               ESC
             </button>
           )}
+          <a
+            href="/"
+            className="bg-rd/80 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-rd transition-colors"
+          >
+            Salir
+          </a>
         </div>
       </header>
-
-      {/* Live Feed */}
-      <LiveFeed />
 
       {/* Main capture area */}
       {step === "modulo" && <ModuleGrid />}
@@ -110,6 +109,9 @@ export default function CapturaSessionPage({
       {step === "motivo" && <MotivoPicker />}
       {step === "resultado" && <ResultadoPicker />}
       {step === "confirm" && <ConfirmFlash />}
+
+      {/* Live Feed - below capture area */}
+      <LiveFeed />
 
       {/* Footer */}
       <footer className="flex items-center justify-between border-t border-dk-3 px-4 py-2.5 bg-nv">
