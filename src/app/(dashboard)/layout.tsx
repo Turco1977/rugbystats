@@ -59,17 +59,17 @@ export default function DashboardLayout({
               </div>
             </div>
             <nav className="py-3">
-              <a href="/director" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
-                <span>🎯</span> Director Deportivo
+              <a href="/director" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+                <span className="text-lg">🎯</span> Director Deportivo
               </a>
-              <a href="/jornada" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
-                <span>📋</span> Fixture
+              <a href="/jornada" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+                <span className="text-lg">📋</span> Fixture
               </a>
-              <a href="/historial" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
-                <span>📊</span> Historial
+              <a href="/historial" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+                <span className="text-lg">📊</span> Historial
               </a>
-              <a href="/captura" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-gn hover:bg-white/5">
-                <span>🏉</span> Captura en Vivo
+              <a href="/captura" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gn hover:bg-white/5">
+                <span className="text-lg">🏉</span> Captura en Vivo
               </a>
 
               {/* Module links */}
@@ -81,7 +81,7 @@ export default function DashboardLayout({
                 <a
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5"
                 >
                   <span className="flex items-center gap-2">
                     <span className={`w-1.5 h-1.5 rounded-full ${item.color}`} />
@@ -108,7 +108,7 @@ export default function DashboardLayout({
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <h1 className="text-sm font-bold text-nv dark:text-white">Rugby Stats</h1>
+            <h1 className="text-base font-bold text-nv dark:text-white">Rugby Stats</h1>
           </div>
           <div className="flex items-center gap-2">
             <button

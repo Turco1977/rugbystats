@@ -12,12 +12,7 @@
 
   body {
     @apply bg-g-1 text-nv antialiased font-sans;
-    font-size: 13px;
-  }
-
-  .dark body,
-  :is(.dark) body {
-    @apply bg-dk-1 text-dk-5;
+    font-size: 15px;
   }
 }
 
@@ -39,13 +34,11 @@
   }
 
   .card {
-    @apply bg-white rounded-lg border border-g-2 shadow-card p-[18px]
-           dark:bg-dk-2 dark:border-white/10;
+    @apply bg-white rounded-lg border border-g-2 shadow-card p-[18px];
   }
 
   .card-compact {
-    @apply bg-white rounded-md border border-g-2 shadow-card-sm px-3.5 py-3
-           dark:bg-dk-2 dark:border-white/10;
+    @apply bg-white rounded-md border border-g-2 shadow-card-sm px-3.5 py-3;
   }
 
   .counter-pill {
@@ -53,16 +46,84 @@
   }
 
   .feed-item {
-    @apply flex items-start gap-3 py-2.5 px-3 border-b border-g-2 dark:border-white/10 text-xs;
+    @apply flex items-start gap-3 py-2.5 px-3 border-b border-g-2 text-xs;
   }
 }
 
-/* Dark mode overrides for common text colors */
+/* ============================================
+   DARK MODE — Global overrides
+   Applied when <html class="dark">
+   ============================================ */
+
+/* Body & base */
+.dark body {
+  background-color: #0F172A;
+  color: #CBD5E1;
+}
+
+/* Text color overrides */
 .dark .text-nv { color: #E2E8F0; }
+.dark .text-g-3 { color: #64748B; }
 .dark .text-g-4 { color: #94A3B8; }
 .dark .text-g-5 { color: #CBD5E1; }
-.dark .text-g-3 { color: #64748B; }
+
+/* Background overrides */
+.dark .bg-white { background-color: #1E293B; }
 .dark .bg-g-1 { background-color: #0F172A; }
 .dark .bg-g-2 { background-color: #1E293B; }
+
+/* Border overrides */
 .dark .border-g-2 { border-color: rgba(255,255,255,0.1); }
-.dark table thead tr.bg-g-1 { background-color: #1E293B; }
+.dark .border-g-3 { border-color: rgba(255,255,255,0.15); }
+
+/* Hover overrides */
+.dark .hover\:bg-g-1:hover { background-color: #1E293B; }
+.dark .hover\:bg-g-2:hover { background-color: #334155; }
+.dark .hover\:text-nv:hover { color: #F1F5F9; }
+
+/* Card overrides */
+.dark .card,
+.dark .card-compact {
+  background-color: #1E293B;
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Feed item borders */
+.dark .feed-item {
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Table overrides */
+.dark table thead tr {
+  background-color: #1E293B;
+}
+.dark table tbody tr {
+  border-color: rgba(255,255,255,0.06);
+}
+.dark table tbody tr:hover {
+  background-color: rgba(255,255,255,0.03);
+}
+
+/* Input/Select overrides */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0F172A;
+  border-color: rgba(255,255,255,0.15);
+  color: #E2E8F0;
+}
+
+/* Modal overlay */
+.dark .bg-nv\/60 { background-color: rgba(0,0,0,0.7); }
+
+/* Badge light backgrounds in dark mode */
+.dark .bg-gn-bg { background-color: rgba(16,185,129,0.15); }
+.dark .bg-rd-bg { background-color: rgba(200,16,46,0.15); }
+.dark .bg-bl-bg { background-color: rgba(59,130,246,0.15); }
+.dark .bg-yl\/10 { background-color: rgba(245,158,11,0.15); }
+.dark .bg-pr-bg { background-color: rgba(139,92,246,0.15); }
+
+/* SVG in dark mode */
+.dark svg line[stroke="#E5E7EB"] { stroke: #334155; }
+.dark svg text[fill="#9CA3AF"] { fill: #64748B; }
+.dark svg circle[fill="white"] { fill: #1E293B; }
