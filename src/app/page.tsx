@@ -28,12 +28,13 @@ export default function LoginPage() {
       return;
     }
 
-    // Detect division from email: m19@... → M19
+    // Detect division from email → go to entrenador page
     const divMatch = email.match(/^(m\d+)@/i);
     if (divMatch) {
       const div = divMatch[1].toUpperCase();
-      router.push(`/director?div=${div}`);
+      router.push(`/entrenador?div=${div}`);
     } else {
+      // drugby or other admin users → director
       router.push("/director");
     }
   };
