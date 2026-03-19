@@ -89,7 +89,7 @@ export default function JornadaPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-nv">Jornadas</h2>
+          <h2 className="text-lg font-bold text-nv dark:text-white">Fixture</h2>
           {currentJornada && (
             <p className="text-xs text-g-4 mt-0.5">
               {currentJornada.name} — {new Date(currentJornada.date + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })}
@@ -100,7 +100,7 @@ export default function JornadaPage() {
           onClick={() => setModalOpen(true)}
           className="bg-nv text-white text-[11px] font-semibold px-3.5 py-2 rounded hover:bg-nv-light transition-colors"
         >
-          + Nueva Jornada
+          + Nueva Fecha
         </button>
       </div>
 
@@ -150,7 +150,7 @@ export default function JornadaPage() {
         <div className="card text-center py-12">
           <p className="text-2xl mb-2">🏉</p>
           <p className="text-g-4 text-sm font-semibold">
-            {jornadas.length === 0 ? "No hay jornadas creadas" : "No hay partidos en esta jornada"}
+            {jornadas.length === 0 ? "No hay fechas creadas" : "No hay partidos en esta fecha"}
           </p>
           <p className="text-g-3 text-xs mt-1">
             {jornadas.length === 0

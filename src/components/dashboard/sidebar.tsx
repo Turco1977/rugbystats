@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 
 const NAV_ITEMS = [
-  { href: "/jornada", icon: "📋", label: "Jornadas" },
+  { href: "/director", icon: "🎯", label: "Director Deportivo" },
+  { href: "/jornada", icon: "📋", label: "Fixture" },
   { href: "/historial", icon: "📊", label: "Historial" },
 ];
 

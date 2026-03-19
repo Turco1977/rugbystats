@@ -2,7 +2,7 @@
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const MODULE_NAV_ITEMS = MODULE_CONFIG.map((mod) => ({
   href: `/${mod.id === "SALIDA" ? "salidas" : mod.id.toLowerCase()}`,
@@ -17,9 +17,25 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("rugbystats-dark");
+    if (saved === "true") {
+      setDark(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("rugbystats-dark", String(next));
+  };
 
   return (
-    <div className="flex min-h-screen bg-g-1">
+    <div className="flex min-h-screen bg-g-1 dark:bg-dk-1">
       {/* Sidebar (desktop) */}
       <Sidebar />
 
@@ -43,8 +59,11 @@ export default function DashboardLayout({
               </div>
             </div>
             <nav className="py-3">
+              <a href="/director" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+                <span>🎯</span> Director Deportivo
+              </a>
               <a href="/jornada" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
-                <span>📋</span> Jornadas
+                <span>📋</span> Fixture
               </a>
               <a href="/historial" className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span>📊</span> Historial
@@ -79,19 +98,35 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-g-2 px-4 py-2.5 flex items-center justify-between shadow-card">
+        <header className="sticky top-0 z-30 bg-white dark:bg-dk-2 border-b border-g-2 dark:border-white/10 px-4 py-2.5 flex items-center justify-between shadow-card">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden text-g-5 hover:text-nv"
+              className="md:hidden text-g-5 dark:text-dk-4 hover:text-nv dark:hover:text-white"
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <h1 className="text-sm font-bold text-nv">Rugby Stats</h1>
+            <h1 className="text-sm font-bold text-nv dark:text-white">Rugby Stats</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleDark}
+              className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-g-1 dark:hover:bg-white/10 transition-colors"
+              title={dark ? "Modo claro" : "Modo oscuro"}
+            >
+              {dark ? (
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                </svg>
+              )}
+            </button>
             <span className="badge bg-gn-bg text-gn-forest">
               Temporada 2026
             </span>

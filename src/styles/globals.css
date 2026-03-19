@@ -14,6 +14,11 @@
     @apply bg-g-1 text-nv antialiased font-sans;
     font-size: 13px;
   }
+
+  .dark body,
+  :is(.dark) body {
+    @apply bg-dk-1 text-dk-5;
+  }
 }
 
 @layer components {
@@ -34,11 +39,13 @@
   }
 
   .card {
-    @apply bg-white rounded-lg border border-g-2 shadow-card p-[18px];
+    @apply bg-white rounded-lg border border-g-2 shadow-card p-[18px]
+           dark:bg-dk-2 dark:border-white/10;
   }
 
   .card-compact {
-    @apply bg-white rounded-md border border-g-2 shadow-card-sm px-3.5 py-3;
+    @apply bg-white rounded-md border border-g-2 shadow-card-sm px-3.5 py-3
+           dark:bg-dk-2 dark:border-white/10;
   }
 
   .counter-pill {
@@ -46,6 +53,16 @@
   }
 
   .feed-item {
-    @apply flex items-start gap-3 py-2.5 px-3 border-b border-g-2 text-xs;
+    @apply flex items-start gap-3 py-2.5 px-3 border-b border-g-2 dark:border-white/10 text-xs;
   }
 }
+
+/* Dark mode overrides for common text colors */
+.dark .text-nv { color: #E2E8F0; }
+.dark .text-g-4 { color: #94A3B8; }
+.dark .text-g-5 { color: #CBD5E1; }
+.dark .text-g-3 { color: #64748B; }
+.dark .bg-g-1 { background-color: #0F172A; }
+.dark .bg-g-2 { background-color: #1E293B; }
+.dark .border-g-2 { border-color: rgba(255,255,255,0.1); }
+.dark table thead tr.bg-g-1 { background-color: #1E293B; }
