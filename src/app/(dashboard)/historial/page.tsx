@@ -11,101 +11,178 @@ interface PartidoHistorial {
   puntos_local: number;
   puntos_visitante: number;
   status: string;
-  fecha_numero: number;
+  created_at: string;
   equipo_local: { name: string; short_name: string } | null;
   equipo_visitante: { name: string; short_name: string } | null;
-  jornadas: { name: string; date: string } | null;
+  jornada: { name: string; date: string } | null;
 }
 
-const DIVISIONS: Division[] = ["M19", "M17", "M16", "M15"];
+interface EventoHistorial {
+  id: string;
+  modulo: string;
+  perspectiva: string;
+  data: Record<string, string>;
+  session: { partido_id: string } | null;
+}
+
+const DIVISIONS = ["M19", "M17", "M16", "M15"] as const;
+const RAMAS = ["Todos", "A", "B", "C"] as const;
 
 export default function HistorialPage() {
-  const [selectedDivision, setSelectedDivision] = useState<Division>("M19");
+  const [selectedDivision, setSelectedDivision] = useState<string>("M19");
+  const [selectedRama, setSelectedRama] = useState<string>("Todos");
   const [partidos, setPartidos] = useState<PartidoHistorial[]>([]);
+  const [eventos, setEventos] = useState<EventoHistorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchDate, setSearchDate] = useState("");
 
   useEffect(() => {
     async function fetchHistorial() {
       setLoading(true);
-      try {
-        const supabase = createClient();
-        let query = supabase
-          .from("partidos")
-          .select(`
-            id, division, puntos_local, puntos_visitante, status, fecha_numero,
-            equipo_local:teams!equipo_local_id(name, short_name),
-            equipo_visitante:teams!equipo_visitante_id(name, short_name),
-            jornadas(name, date)
-          `)
-          .eq("division", selectedDivision)
-          .eq("status", "finished")
-          .order("fecha_numero", { ascending: false });
+      const supabase = createClient();
 
-        const { data } = await query;
-        if (data) setPartidos(data as unknown as PartidoHistorial[]);
-      } catch {
-        // Demo fallback
-        setPartidos([]);
-      } finally {
-        setLoading(false);
+      // Fetch finished partidos for this division
+      const divFilter = selectedRama === "Todos"
+        ? `${selectedDivision}%`
+        : `${selectedDivision}${selectedRama}`;
+
+      let query = supabase
+        .from("partidos")
+        .select(`
+          id, division, puntos_local, puntos_visitante, status, created_at,
+          equipo_local:teams!equipo_local_id(name, short_name),
+          equipo_visitante:teams!equipo_visitante_id(name, short_name),
+          jornada:jornadas!jornada_id(name, date)
+        `)
+        .eq("status", "finished")
+        .order("created_at", { ascending: false });
+
+      if (selectedRama === "Todos") {
+        query = query.like("division", `${selectedDivision}%`);
+      } else {
+        query = query.eq("division", `${selectedDivision}${selectedRama}`);
       }
+
+      const { data } = await query;
+      const matchData = (data || []) as unknown as PartidoHistorial[];
+      setPartidos(matchData);
+
+      // Fetch eventos for these partidos
+      if (matchData.length > 0) {
+        const partidoIds = matchData.map((p) => p.id);
+        const { data: evData } = await supabase
+          .from("eventos")
+          .select(`
+            id, modulo, perspectiva, data,
+            session:sessions!session_id(partido_id)
+          `)
+          .in("session_id",
+            (await supabase
+              .from("sessions")
+              .select("id")
+              .in("partido_id", partidoIds)
+            ).data?.map((s: { id: string }) => s.id) || []
+          );
+        if (evData) setEventos(evData as unknown as EventoHistorial[]);
+      } else {
+        setEventos([]);
+      }
+
+      setLoading(false);
     }
     fetchHistorial();
-  }, [selectedDivision]);
+  }, [selectedDivision, selectedRama]);
 
-  // Filter by date if search is active
+  // Filter by date
   const filteredPartidos = searchDate
-    ? partidos.filter((p) => {
-        const jornadaDate = (p.jornadas as { date: string } | null)?.date ?? "";
-        return jornadaDate.includes(searchDate);
-      })
+    ? partidos.filter((p) => p.jornada?.date?.includes(searchDate))
     : partidos;
 
-  // Demo data if no real data
-  const demoResults = [
-    { fecha: 1, date: "7/3", rival: "Peumayen", resultado: "G", score: "21-14", totalEventos: 47 },
-    { fecha: 2, date: "21/3", rival: "Marista A", resultado: "P", score: "10-24", totalEventos: 52 },
-    { fecha: 3, date: "28/3", rival: "Liceo A", resultado: "G", score: "28-7", totalEventos: 38 },
-  ];
-  const showDemo = !loading && filteredPartidos.length === 0 && !searchDate;
+  // Compute module stats from eventos
+  const moduleStats: Record<string, { propio: number; rival: number }> = {};
+  for (const ev of eventos) {
+    if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
+    moduleStats[ev.modulo][ev.perspectiva]++;
+  }
+
+  // Win/loss/draw counts
+  const wins = filteredPartidos.filter((p) => p.puntos_local > p.puntos_visitante).length;
+  const losses = filteredPartidos.filter((p) => p.puntos_local < p.puntos_visitante).length;
+  const draws = filteredPartidos.filter((p) => p.puntos_local === p.puntos_visitante).length;
+  const totalPF = filteredPartidos.reduce((s, p) => s + p.puntos_local, 0);
+  const totalPC = filteredPartidos.reduce((s, p) => s + p.puntos_visitante, 0);
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-xl font-bold text-nv">Historial de Temporada</h2>
-          <p className="text-sm text-g-4 mt-0.5">
-            Torneo Apertura 2026 — Zona 1
-          </p>
+          <h2 className="text-lg font-bold text-nv dark:text-white">Historial de Temporada</h2>
+          <p className="text-xs text-g-4 mt-0.5">Torneo Apertura 2026</p>
         </div>
+        <input
+          type="date"
+          value={searchDate}
+          onChange={(e) => setSearchDate(e.target.value)}
+          className="text-xs px-3 py-1.5 rounded border border-dk-3 bg-dk-2 text-white"
+        />
+      </div>
 
-        <div className="flex items-center gap-3">
-          {/* Date search */}
-          <input
-            type="date"
-            value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded border border-g-3 bg-white"
-            placeholder="Buscar fecha"
-          />
+      {/* Division filter */}
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+        {DIVISIONS.map((div) => (
+          <button
+            key={div}
+            onClick={() => { setSelectedDivision(div); setSelectedRama("Todos"); }}
+            className={`text-xs font-bold px-4 py-2 rounded-md whitespace-nowrap transition-colors ${
+              div === selectedDivision
+                ? "bg-nv text-white"
+                : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
+            }`}
+          >
+            {div}
+          </button>
+        ))}
+      </div>
 
-          {/* Division filter */}
-          <div className="flex gap-1.5">
-            {DIVISIONS.map((div) => (
-              <button
-                key={div}
-                onClick={() => setSelectedDivision(div)}
-                className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${
-                  div === selectedDivision
-                    ? "bg-nv text-white"
-                    : "bg-g-1 border border-g-2 text-g-5 hover:bg-g-2"
-                }`}
-              >
-                {div}
-              </button>
-            ))}
-          </div>
+      {/* Rama filter (A/B/C) */}
+      <div className="flex gap-2 mb-4">
+        {RAMAS.map((rama) => (
+          <button
+            key={rama}
+            onClick={() => setSelectedRama(rama)}
+            className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
+              rama === selectedRama
+                ? "bg-gn text-white"
+                : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
+            }`}
+          >
+            {rama === "Todos" ? "Todos" : `${selectedDivision} ${rama}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-5 gap-2 mb-6">
+        <div className="card-compact text-center">
+          <p className="text-[10px] text-g-4 font-semibold uppercase">PJ</p>
+          <p className="text-xl font-extrabold text-nv">{filteredPartidos.length}</p>
+        </div>
+        <div className="card-compact text-center">
+          <p className="text-[10px] text-gn font-semibold uppercase">G</p>
+          <p className="text-xl font-extrabold text-gn">{wins}</p>
+        </div>
+        <div className="card-compact text-center">
+          <p className="text-[10px] text-rd font-semibold uppercase">P</p>
+          <p className="text-xl font-extrabold text-rd">{losses}</p>
+        </div>
+        <div className="card-compact text-center">
+          <p className="text-[10px] text-g-4 font-semibold uppercase">PF</p>
+          <p className="text-xl font-extrabold text-nv">{totalPF}</p>
+        </div>
+        <div className="card-compact text-center">
+          <p className="text-[10px] text-g-4 font-semibold uppercase">PC</p>
+          <p className="text-xl font-extrabold text-nv">{totalPC}</p>
         </div>
       </div>
 
@@ -113,23 +190,13 @@ export default function HistorialPage() {
       <div className="card !p-0 overflow-hidden mb-6">
         <table className="w-full">
           <thead>
-            <tr className="bg-g-1">
-              <th className="text-left text-xs font-bold text-g-4 uppercase tracking-wider py-2.5 px-3">
-                Fecha
-              </th>
-              <th className="text-left text-xs font-bold text-g-4 uppercase tracking-wider py-2.5 px-3">
-                Rival
-              </th>
-              <th className="text-center text-xs font-bold text-g-4 uppercase tracking-wider py-2.5 px-3">
-                Res.
-              </th>
-              <th className="text-center text-xs font-bold text-g-4 uppercase tracking-wider py-2.5 px-3">
-                Score
-              </th>
-              <th className="text-center text-xs font-bold text-g-4 uppercase tracking-wider py-2.5 px-3">
-                Eventos
-              </th>
-              <th className="text-xs font-bold text-g-4 py-2.5 px-3" />
+            <tr className="bg-dk-2">
+              <th className="text-left text-[10px] font-bold text-g-4 uppercase tracking-wider py-2 px-3">División</th>
+              <th className="text-left text-[10px] font-bold text-g-4 uppercase tracking-wider py-2 px-3">Rival</th>
+              <th className="text-center text-[10px] font-bold text-g-4 uppercase tracking-wider py-2 px-3">Res.</th>
+              <th className="text-center text-[10px] font-bold text-g-4 uppercase tracking-wider py-2 px-3">Score</th>
+              <th className="text-center text-[10px] font-bold text-g-4 uppercase tracking-wider py-2 px-3">Fecha</th>
+              <th className="text-[10px] py-2 px-3" />
             </tr>
           </thead>
           <tbody>
@@ -142,57 +209,40 @@ export default function HistorialPage() {
             ) : filteredPartidos.length > 0 ? (
               filteredPartidos.map((p) => {
                 const isWin = p.puntos_local > p.puntos_visitante;
+                const isDraw = p.puntos_local === p.puntos_visitante;
                 const rival = p.equipo_visitante?.short_name || p.equipo_visitante?.name || "—";
+                const dateStr = p.jornada?.date
+                  ? new Date(p.jornada.date + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })
+                  : "—";
                 return (
-                  <tr
-                    key={p.id}
-                    className="border-t border-g-2 hover:bg-g-1 transition-colors cursor-pointer"
-                  >
-                    <td className="py-3 px-3">
-                      <span className="text-sm font-semibold text-nv">#{p.fecha_numero}</span>
+                  <tr key={p.id} className="border-t border-dk-3 hover:bg-dk-2 transition-colors">
+                    <td className="py-2.5 px-3">
+                      <span className="text-xs font-bold text-nv">{p.division}</span>
                     </td>
-                    <td className="py-3 px-3 text-sm font-semibold text-g-5">{rival}</td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`badge ${isWin ? "bg-gn-bg text-gn-forest" : "bg-rd-bg text-rd"}`}>
-                        {isWin ? "Ganado" : "Perdido"}
+                    <td className="py-2.5 px-3 text-xs font-semibold text-g-5">{rival}</td>
+                    <td className="py-2.5 px-3 text-center">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        isWin ? "bg-gn-bg text-gn-forest" : isDraw ? "bg-yw-bg text-yw-dark" : "bg-rd-bg text-rd"
+                      }`}>
+                        {isWin ? "G" : isDraw ? "E" : "P"}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-center text-sm font-bold text-nv">
+                    <td className="py-2.5 px-3 text-center text-xs font-bold text-white">
                       {p.puntos_local} - {p.puntos_visitante}
                     </td>
-                    <td className="py-3 px-3 text-center text-sm text-g-4">—</td>
-                    <td className="py-3 px-3 text-right">
-                      <a href={`/partido/${p.id}`} className="text-xs text-bl hover:underline">
+                    <td className="py-2.5 px-3 text-center text-[10px] text-g-4">{dateStr}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <a href={`/partido/${p.id}`} className="text-[10px] text-bl hover:underline">
                         Ver →
                       </a>
                     </td>
                   </tr>
                 );
               })
-            ) : showDemo ? (
-              demoResults.map((row) => (
-                <tr key={row.fecha} className="border-t border-g-2 hover:bg-g-1 transition-colors cursor-pointer">
-                  <td className="py-3 px-3">
-                    <span className="text-sm font-semibold text-nv">#{row.fecha}</span>
-                    <span className="text-xs text-g-4 ml-1.5">{row.date}</span>
-                  </td>
-                  <td className="py-3 px-3 text-sm font-semibold text-g-5">{row.rival}</td>
-                  <td className="py-3 px-3 text-center">
-                    <span className={`badge ${row.resultado === "G" ? "bg-gn-bg text-gn-forest" : "bg-rd-bg text-rd"}`}>
-                      {row.resultado === "G" ? "Ganado" : "Perdido"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-center text-sm font-bold text-nv">{row.score}</td>
-                  <td className="py-3 px-3 text-center text-sm text-g-4">{row.totalEventos}</td>
-                  <td className="py-3 px-3 text-right">
-                    <span className="text-xs text-g-3">Demo</span>
-                  </td>
-                </tr>
-              ))
             ) : (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-sm text-g-4">
-                  No se encontraron partidos {searchDate ? `para la fecha ${searchDate}` : ""}
+                <td colSpan={6} className="py-8 text-center text-xs text-g-4">
+                  No hay partidos finalizados para {selectedDivision}{selectedRama !== "Todos" ? ` ${selectedRama}` : ""}
                 </td>
               </tr>
             )}
@@ -200,21 +250,38 @@ export default function HistorialPage() {
         </table>
       </div>
 
-      {/* Module summary */}
-      <h3 className="text-xs font-bold text-g-4 uppercase tracking-wider mb-3">
-        Acumulado por Módulo — {selectedDivision}
+      {/* Accumulated module stats */}
+      <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+        Acumulado por Módulo — {selectedDivision}{selectedRama !== "Todos" ? ` ${selectedRama}` : ""}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {MODULE_CONFIG.map((mod) => (
-          <a key={mod.id} href={`/${mod.id === "SALIDA" ? "salidas" : mod.id.toLowerCase()}`} className="card-compact text-center hover:shadow-card-sm transition-shadow">
-            <span className="text-xl">{mod.icon}</span>
-            <p className="text-xs font-bold text-g-4 uppercase tracking-wider mt-1">
-              {mod.label}
-            </p>
-            <p className="text-xl font-extrabold text-nv mt-1">—</p>
-            <p className="text-[10px] text-g-3">Ver detalle →</p>
-          </a>
-        ))}
+        {MODULE_CONFIG.map((mod) => {
+          const data = moduleStats[mod.id] || { propio: 0, rival: 0 };
+          const total = data.propio + data.rival;
+          const propioPercent = total > 0 ? Math.round((data.propio / total) * 100) : 50;
+
+          return (
+            <a
+              key={mod.id}
+              href={`/${mod.id === "SALIDA" ? "salidas" : mod.id.toLowerCase()}`}
+              className="card-compact hover:ring-2 hover:ring-nv transition-all"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{mod.icon}</span>
+                <span className="text-[10px] font-bold text-g-4 uppercase tracking-wider">{mod.label}</span>
+              </div>
+              <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-g-1 mb-2">
+                <div className="bg-gn rounded-l-full" style={{ width: `${propioPercent}%` }} />
+                <div className="bg-rd rounded-r-full" style={{ width: `${100 - propioPercent}%` }} />
+              </div>
+              <div className="flex justify-between text-[10px]">
+                <span className="font-bold text-gn-dark">P: {data.propio}</span>
+                <span className="font-bold text-rd">R: {data.rival}</span>
+              </div>
+              <p className="text-[10px] text-g-3 mt-1">Total: {total}</p>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
