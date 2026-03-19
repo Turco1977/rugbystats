@@ -48,8 +48,8 @@ export const MODULE_CONFIG: ModuleConfig[] = [
       { key: "P", label: "Perfecta", short: "P" },
       { key: "I", label: "Infracción", short: "I" },
       { key: "S", label: "Suelo", short: "S" },
-      { key: "ENF", label: "Enfrentamiento", short: "ENF" },
-      { key: "EF", label: "Efectiva", short: "EF" },
+      { key: "ENF", label: "Error No Forzado", short: "ENF" },
+      { key: "EF", label: "Error Forzado", short: "EF" },
     ],
     resultados: [
       { key: "obtenida", label: "Obtenida" },
