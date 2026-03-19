@@ -122,6 +122,19 @@ export const PLANTEL_MAP: Record<string, { label: string; divisions: string[] }>
   C: { label: "Plantel C", divisions: ["M15", "M16"] },
 };
 
+/** Planteles Los Tordos */
+export const PLANTELES = [
+  { key: "M19A", division: "M19", label: "M19 A" },
+  { key: "M19B", division: "M19", label: "M19 B" },
+  { key: "M19C", division: "M19", label: "M19 C" },
+  { key: "M17A", division: "M17", label: "M17 A" },
+  { key: "M17B", division: "M17", label: "M17 B" },
+  { key: "M16A", division: "M16", label: "M16 A" },
+  { key: "M16B", division: "M16", label: "M16 B" },
+  { key: "M15A", division: "M15", label: "M15 A" },
+  { key: "M15B", division: "M15", label: "M15 B" },
+];
+
 /** Maps URL slugs to ModuloType values */
 export const MODULE_SLUG_MAP: Record<string, string> = {
   line: "LINE",
