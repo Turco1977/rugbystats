@@ -10,6 +10,7 @@ import { ResultadoPicker } from "@/components/capture/resultado-picker";
 import { DetallePicker } from "@/components/capture/detalle-picker";
 import { ConfirmFlash } from "@/components/capture/confirm-flash";
 import { LiveFeed } from "@/components/capture/live-feed";
+import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 
 export default function CapturaSessionPage({
   params,
@@ -32,6 +33,8 @@ export default function CapturaSessionPage({
   const [joining, setJoining] = useState(true);
   const [error, setError] = useState(false);
   const [closing, setClosing] = useState(false);
+  const partidoId = useCaptureStore((s) => s.partidoId);
+  const realtimeEvents = useRealtimeEventos(partidoId);
 
   const handleCerrar = async () => {
     if (!confirm("¿Cerrar partido? Se marcará como finalizado.")) return;
@@ -98,7 +101,7 @@ export default function CapturaSessionPage({
         <div className="flex items-center gap-3">
           <div className="text-right">
             <span className="text-[10px] text-dk-4 block">Eventos</span>
-            <span className="text-lg font-extrabold leading-tight">{events.length}</span>
+            <span className="text-lg font-extrabold leading-tight">{realtimeEvents.length}</span>
           </div>
           {step !== "modulo" && (
             <button
