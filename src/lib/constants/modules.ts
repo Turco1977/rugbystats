@@ -98,6 +98,16 @@ export const MODULE_CONFIG: ModuleConfig[] = [
       { key: "primera_fase", label: "Primera Fase" },
       { key: "sistema", label: "Sistema" },
     ],
+    motivoResultados: {
+      QF: [
+        { key: "primera_fase", label: "Primera Fase" },
+        { key: "sistema", label: "Sistema" },
+      ],
+      E22: [
+        { key: "puntos", label: "Puntos" },
+        { key: "recuperada", label: "Recuperada" },
+      ],
+    },
   },
   {
     id: "PIE",
@@ -116,6 +126,14 @@ export const MODULE_CONFIG: ModuleConfig[] = [
       { key: "deficitario", label: "Deficitario" },
     ],
   },
+];
+
+/** Sub-options when resultado = "puntos" */
+export const PUNTOS_DETALLE = [
+  { key: "try_convertido", label: "Try Convertido", points: 7 },
+  { key: "try", label: "Try", points: 5 },
+  { key: "penal", label: "Penal", points: 3 },
+  { key: "drop", label: "Drop", points: 3 },
 ];
 
 export const PERSPECTIVA_OPTIONS = [

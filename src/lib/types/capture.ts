@@ -1,7 +1,7 @@
 import type { ModuloType, Perspectiva } from "./domain";
 
 /** Steps in the capture flow */
-export type CaptureStep = "modulo" | "perspectiva" | "motivo" | "resultado" | "confirm";
+export type CaptureStep = "modulo" | "perspectiva" | "motivo" | "resultado" | "detalle" | "confirm";
 
 /** Module config for the capture UI */
 export interface ModuleConfig {

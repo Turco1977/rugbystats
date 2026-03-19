@@ -40,6 +40,7 @@ interface CaptureState {
   selectPerspectiva: (perspectiva: Perspectiva) => void;
   selectMotivo: (motivo: string) => void;
   selectResultado: (resultado: string) => void;
+  selectDetalle: (detalle: string, points: number) => void;
   undoLast: () => void;
   resetFlow: () => void;
   setSession: (code: string, name: string) => void;
@@ -87,6 +88,13 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
     if (!state.selectedModulo || !state.selectedPerspectiva || !state.selectedMotivo)
       return;
 
+    // If "puntos" selected, go to detalle step to pick try/penal/drop
+    if (resultado === "puntos") {
+      set({ selectedResultado: resultado, step: "detalle" });
+      return;
+    }
+
+    // Non-points resultado: record event directly
     const counterKey = `${state.selectedModulo}_${state.selectedPerspectiva}`;
     const currentCount = (state.counters[counterKey] || 0) + 1;
 
@@ -102,42 +110,15 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
       synced: false,
     };
 
-    // Calculate points if applicable
-    let pointsToAdd = 0;
-    if (resultado === "puntos" || POINTS_MAP[resultado]) {
-      // Direct result is a scoring type
-      pointsToAdd = POINTS_MAP[resultado] || 0;
-    }
-    // For ATAQUE/DEFENSA with "puntos" resultado and a motivo that implies points
-    if (resultado === "puntos" && state.selectedMotivo) {
-      // Default 5 points for "puntos" if no specific detail
-      if (pointsToAdd === 0) pointsToAdd = 5;
-    }
-
-    let newLocal = state.puntosLocal;
-    let newVisitante = state.puntosVisitante;
-
-    if (pointsToAdd > 0) {
-      if (state.selectedModulo === "ATAQUE" && state.selectedPerspectiva === "propio") {
-        // Los Tordos score
-        newLocal += pointsToAdd;
-      } else if (state.selectedModulo === "DEFENSA" && state.selectedPerspectiva === "propio") {
-        // Rival scores (we are defending, they scored)
-        newVisitante += pointsToAdd;
-      }
-    }
-
     set({
       selectedResultado: resultado,
       events: [event, ...state.events],
       undoStack: [event, ...state.undoStack.slice(0, 9)],
       counters: { ...state.counters, [counterKey]: currentCount },
-      puntosLocal: newLocal,
-      puntosVisitante: newVisitante,
       step: "confirm",
     });
 
-    // Save to Supabase if we have a session
+    // Save to Supabase
     if (state.partidoId) {
       const supabase = createClient();
       supabase
@@ -160,26 +141,88 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
             }));
           }
         });
-
-      // Update score in partidos table if points changed
-      if (pointsToAdd > 0) {
-        supabase
-          .from("partidos")
-          .update({ puntos_local: newLocal, puntos_visitante: newVisitante })
-          .eq("id", state.partidoId)
-          .then(() => {});
-      }
     }
 
-    // Auto-reset after confirm flash
+    // Auto-reset
     setTimeout(() => {
-      set({
-        step: "modulo",
-        selectedModulo: null,
-        selectedPerspectiva: null,
-        selectedMotivo: null,
-        selectedResultado: null,
-      });
+      set({ step: "modulo", selectedModulo: null, selectedPerspectiva: null, selectedMotivo: null, selectedResultado: null });
+    }, 800);
+  },
+
+  selectDetalle: (detalle, points) => {
+    const state = get();
+    if (!state.selectedModulo || !state.selectedPerspectiva || !state.selectedMotivo)
+      return;
+
+    const counterKey = `${state.selectedModulo}_${state.selectedPerspectiva}`;
+    const currentCount = (state.counters[counterKey] || 0) + 1;
+
+    const event: QueuedEvent = {
+      id: crypto.randomUUID(),
+      modulo: state.selectedModulo,
+      perspectiva: state.selectedPerspectiva,
+      motivo: state.selectedMotivo,
+      resultado: detalle,
+      timestamp: new Date().toISOString(),
+      numero: currentCount,
+      cargadoPor: state.displayName || "Anónimo",
+      synced: false,
+    };
+
+    let newLocal = state.puntosLocal;
+    let newVisitante = state.puntosVisitante;
+
+    if (state.selectedModulo === "ATAQUE") {
+      newLocal += points;
+    } else if (state.selectedModulo === "DEFENSA") {
+      newVisitante += points;
+    }
+
+    set({
+      selectedResultado: detalle,
+      events: [event, ...state.events],
+      undoStack: [event, ...state.undoStack.slice(0, 9)],
+      counters: { ...state.counters, [counterKey]: currentCount },
+      puntosLocal: newLocal,
+      puntosVisitante: newVisitante,
+      step: "confirm",
+    });
+
+    // Save to Supabase
+    if (state.partidoId) {
+      const supabase = createClient();
+      supabase
+        .from("eventos")
+        .insert({
+          partido_id: state.partidoId,
+          session_id: state.sessionId,
+          modulo: state.selectedModulo,
+          perspectiva: state.selectedPerspectiva,
+          numero: currentCount,
+          data: { motivo: state.selectedMotivo, resultado: "puntos", detalle },
+          cargado_por: state.displayName || "Anónimo",
+        })
+        .then(({ error }) => {
+          if (!error) {
+            set((s) => ({
+              events: s.events.map((e) =>
+                e.id === event.id ? { ...e, synced: true } : e
+              ),
+            }));
+          }
+        });
+
+      // Update score
+      supabase
+        .from("partidos")
+        .update({ puntos_local: newLocal, puntos_visitante: newVisitante })
+        .eq("id", state.partidoId)
+        .then(() => {});
+    }
+
+    // Auto-reset
+    setTimeout(() => {
+      set({ step: "modulo", selectedModulo: null, selectedPerspectiva: null, selectedMotivo: null, selectedResultado: null });
     }, 800);
   },
 

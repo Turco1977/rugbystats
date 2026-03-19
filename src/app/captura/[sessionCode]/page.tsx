@@ -7,6 +7,7 @@ import { ModuleGrid } from "@/components/capture/module-grid";
 import { PerspectivaPicker } from "@/components/capture/perspectiva-picker";
 import { MotivoPicker } from "@/components/capture/motivo-picker";
 import { ResultadoPicker } from "@/components/capture/resultado-picker";
+import { DetallePicker } from "@/components/capture/detalle-picker";
 import { ConfirmFlash } from "@/components/capture/confirm-flash";
 import { LiveFeed } from "@/components/capture/live-feed";
 
@@ -121,6 +122,7 @@ export default function CapturaSessionPage({
       {step === "perspectiva" && <PerspectivaPicker />}
       {step === "motivo" && <MotivoPicker />}
       {step === "resultado" && <ResultadoPicker />}
+      {step === "detalle" && <DetallePicker />}
       {step === "confirm" && <ConfirmFlash />}
 
       {/* Live Feed - below capture area */}
