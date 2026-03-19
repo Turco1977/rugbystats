@@ -27,6 +27,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   // Result state
   const [resultCode, setResultCode] = useState("");
@@ -50,6 +51,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     setDate(new Date().toISOString().split("T")[0]);
     setCopiedCode(false);
     setResultCode("");
+    setErrorMsg("");
   };
 
   const handleClose = () => {
@@ -62,7 +64,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     return PLANTELES.find((pl) => pl.key === selectedPlantel) ?? null;
   };
 
-  // Find Tordos team matching the plantel suffix (A, B, C)
+  // Find Tordos team by plantel suffix
   const findTordosTeamId = (): string | null => {
     if (!selectedPlantel) return null;
     const suffix = selectedPlantel.slice(-1); // A, B, or C
@@ -73,64 +75,81 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     );
     if (exact) return exact.id;
 
-    // Fallback: any team with "tordos" and ending in the suffix letter
+    // Fallback: any tordos team ending in suffix
     const fallback = teams.find(
       (t) =>
         t.name.toLowerCase().includes("tordos") &&
-        t.name.trim().toUpperCase().slice(-1) === suffix
+        t.name.trim().slice(-1).toUpperCase() === suffix
     );
     if (fallback) return fallback.id;
 
-    // Last resort: first tordos team
+    // Last resort: first tordos
     const any = teams.find((t) => t.name.toLowerCase().includes("tordos"));
     return any?.id ?? null;
   };
 
-  // Find or create rival team by name
-  const getOrCreateRivalId = async (name: string): Promise<string | null> => {
-    const supabase = createClient();
-    const trimmed = name.trim();
-    if (!trimmed) return null;
+  // Find rival team by partial name match in existing teams
+  const findRivalTeamId = (name: string): string | null => {
+    const search = name.trim().toLowerCase();
+    if (!search) return null;
 
-    // Search existing
-    const { data: existing } = await supabase
-      .from("teams")
-      .select("id")
-      .ilike("name", trimmed)
-      .maybeSingle();
+    // Exact short_name match
+    const exactShort = teams.find(
+      (t) => t.short_name.toLowerCase() === search
+    );
+    if (exactShort) return exactShort.id;
 
-    if (existing) return existing.id;
+    // short_name contains search
+    const partialShort = teams.find(
+      (t) => t.short_name.toLowerCase().includes(search)
+    );
+    if (partialShort) return partialShort.id;
 
-    // Create new team
-    const { data: newTeam, error } = await supabase
-      .from("teams")
-      .insert({ name: trimmed, short_name: trimmed })
-      .select("id")
-      .single();
+    // name contains search
+    const partialName = teams.find(
+      (t) => t.name.toLowerCase().includes(search)
+    );
+    if (partialName) return partialName.id;
 
-    if (error) return null;
-    return newTeam.id;
+    // search contains short_name
+    const reverseMatch = teams.find(
+      (t) => search.includes(t.short_name.toLowerCase())
+    );
+    if (reverseMatch) return reverseMatch.id;
+
+    return null;
   };
+
+  // Non-Tordos teams for autocomplete hints
+  const rivalTeams = teams.filter(
+    (t) => !t.name.toLowerCase().includes("tordos") && t.name !== "LIBRE"
+  );
 
   const handleCreate = async () => {
     const plantel = getPlantelInfo();
     if (!plantel || !rivalName.trim()) return;
 
+    setErrorMsg("");
     setLoading(true);
     try {
       const supabase = createClient();
 
-      // 1. Find Tordos team + get or create rival
+      // 1. Find teams
       const tordosId = findTordosTeamId();
-      if (!tordosId) throw new Error("No se encontró equipo Tordos en la base de datos");
+      if (!tordosId) {
+        setErrorMsg("No se encontró equipo Tordos. Verificá que los equipos estén cargados en Supabase.");
+        return;
+      }
 
-      const rivalId = await getOrCreateRivalId(rivalName);
-      if (!rivalId) throw new Error("No se pudo crear el equipo rival");
+      const rivalId = findRivalTeamId(rivalName);
+      if (!rivalId) {
+        const available = rivalTeams.map((t) => t.short_name).join(", ");
+        setErrorMsg(`No se encontró "${rivalName}". Equipos disponibles: ${available}`);
+        return;
+      }
 
       // 2. Find or create jornada for this date
-      const jornadaName = `Fecha ${date}`;
       let jornadaId: string;
-
       const { data: existing } = await supabase
         .from("jornadas")
         .select("id")
@@ -142,7 +161,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
       } else {
         const { data: newJ, error: jErr } = await supabase
           .from("jornadas")
-          .insert({ name: jornadaName, date })
+          .insert({ name: `Fecha ${date}`, date })
           .select("id")
           .single();
         if (jErr) throw jErr;
@@ -165,20 +184,23 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
 
       // 4. Generate code & create session
       const code = generateSessionCode();
-      await supabase.from("sessions").insert({
+      const { error: sErr } = await supabase.from("sessions").insert({
         partido_id: partido.id,
         code,
         created_by: "Director",
       });
+      if (sErr) throw sErr;
 
       // 5. Show result
+      const rivalTeam = teams.find((t) => t.id === rivalId);
       setResultCode(code);
       setResultPlantel(plantel.label);
-      setResultRival(rivalName.trim());
+      setResultRival(rivalTeam?.short_name || rivalName.trim());
       setStep("result");
       onCreated();
     } catch (err) {
-      console.error("Error creating match:", err);
+      const msg = err instanceof Error ? err.message : "Error desconocido";
+      setErrorMsg(`Error al crear partido: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -249,7 +271,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                 </div>
               )}
 
-              {/* Rival - text input */}
+              {/* Rival - text input with hint */}
               <div>
                 <label className="text-xs font-bold text-g-4 uppercase tracking-wider block mb-2">
                   Rival
@@ -257,10 +279,16 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                 <input
                   type="text"
                   value={rivalName}
-                  onChange={(e) => setRivalName(e.target.value)}
+                  onChange={(e) => { setRivalName(e.target.value); setErrorMsg(""); }}
                   placeholder="Ej: Peumayen, Marista, Liceo..."
+                  list="rival-teams"
                   className="w-full border border-g-3 rounded-md px-3 py-2.5 text-sm bg-white"
                 />
+                <datalist id="rival-teams">
+                  {rivalTeams.map((t) => (
+                    <option key={t.id} value={t.short_name} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Date */}
@@ -292,6 +320,13 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                 </div>
               </div>
 
+              {/* Error message */}
+              {errorMsg && (
+                <div className="bg-rd-bg border border-rd-border rounded-md px-3 py-2">
+                  <p className="text-xs text-rd font-semibold">{errorMsg}</p>
+                </div>
+              )}
+
               {/* Create button */}
               <button
                 onClick={handleCreate}
@@ -311,7 +346,6 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
               {resultPlantel} — Los Tordos vs {resultRival}
             </p>
 
-            {/* Session code */}
             <p className="text-xs font-bold text-g-4 uppercase tracking-wider mb-2">
               Código de Sesión
             </p>
@@ -321,7 +355,6 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
               </span>
             </div>
 
-            {/* 3 buttons */}
             <div className="space-y-3">
               <button
                 onClick={handleJoin}
@@ -346,10 +379,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
               </button>
             </div>
 
-            <button
-              onClick={handleClose}
-              className="mt-4 text-xs text-g-4 hover:text-nv"
-            >
+            <button onClick={handleClose} className="mt-4 text-xs text-g-4 hover:text-nv">
               Cerrar
             </button>
           </div>
