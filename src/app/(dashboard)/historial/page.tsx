@@ -283,6 +283,196 @@ export default function HistorialPage() {
           );
         })}
       </div>
+      {/* Comparador */}
+      <Comparador division={selectedDivision} />
+    </div>
+  );
+}
+
+// --- Comparador Component ---
+function Comparador({ division }: { division: string }) {
+  const [compareMode, setCompareMode] = useState<"rama" | "partido">("rama");
+  const [ramaA, setRamaA] = useState("A");
+  const [ramaB, setRamaB] = useState("B");
+  const [statsA, setStatsA] = useState<Record<string, { propio: number; rival: number }>>({});
+  const [statsB, setStatsB] = useState<Record<string, { propio: number; rival: number }>>({});
+  const [summaryA, setSummaryA] = useState({ pj: 0, g: 0, p: 0, pf: 0, pc: 0 });
+  const [summaryB, setSummaryB] = useState({ pj: 0, g: 0, p: 0, pf: 0, pc: 0 });
+  const [loadingCompare, setLoadingCompare] = useState(false);
+
+  const fetchRamaStats = async (rama: string) => {
+    const supabase = createClient();
+    const divKey = `${division}${rama}`;
+
+    const { data: partidos } = await supabase
+      .from("partidos")
+      .select("id, puntos_local, puntos_visitante")
+      .eq("division", divKey)
+      .eq("status", "finished");
+
+    const matches = partidos || [];
+    const summary = {
+      pj: matches.length,
+      g: matches.filter((p: { puntos_local: number; puntos_visitante: number }) => p.puntos_local > p.puntos_visitante).length,
+      p: matches.filter((p: { puntos_local: number; puntos_visitante: number }) => p.puntos_local < p.puntos_visitante).length,
+      pf: matches.reduce((s: number, p: { puntos_local: number }) => s + p.puntos_local, 0),
+      pc: matches.reduce((s: number, p: { puntos_visitante: number }) => s + p.puntos_visitante, 0),
+    };
+
+    const partidoIds = matches.map((p: { id: string }) => p.id);
+    const moduleStats: Record<string, { propio: number; rival: number }> = {};
+
+    if (partidoIds.length > 0) {
+      const { data: sessions } = await supabase
+        .from("sessions")
+        .select("id")
+        .in("partido_id", partidoIds);
+
+      if (sessions && sessions.length > 0) {
+        const sessionIds = sessions.map((s: { id: string }) => s.id);
+        const { data: eventos } = await supabase
+          .from("eventos")
+          .select("modulo, perspectiva")
+          .in("session_id", sessionIds);
+
+        if (eventos) {
+          for (const ev of eventos) {
+            if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
+            moduleStats[ev.modulo][ev.perspectiva as "propio" | "rival"]++;
+          }
+        }
+      }
+    }
+
+    return { stats: moduleStats, summary };
+  };
+
+  const handleCompare = async () => {
+    setLoadingCompare(true);
+    const [resultA, resultB] = await Promise.all([
+      fetchRamaStats(ramaA),
+      fetchRamaStats(ramaB),
+    ]);
+    setStatsA(resultA.stats);
+    setStatsB(resultB.stats);
+    setSummaryA(resultA.summary);
+    setSummaryB(resultB.summary);
+    setLoadingCompare(false);
+  };
+
+  const hasData = Object.keys(statsA).length > 0 || Object.keys(statsB).length > 0;
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+        Comparador
+      </h3>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex gap-1">
+          <button
+            onClick={() => setCompareMode("rama")}
+            className={`text-[10px] font-bold px-3 py-1.5 rounded ${compareMode === "rama" ? "bg-nv text-white" : "bg-dk-2 text-g-4"}`}
+          >
+            Rama vs Rama
+          </button>
+        </div>
+
+        <select
+          value={ramaA}
+          onChange={(e) => setRamaA(e.target.value)}
+          className="text-xs px-2 py-1.5 rounded bg-dk-2 border border-dk-3 text-white"
+        >
+          <option value="A">{division} A</option>
+          <option value="B">{division} B</option>
+          <option value="C">{division} C</option>
+        </select>
+
+        <span className="text-xs text-g-4 font-bold">VS</span>
+
+        <select
+          value={ramaB}
+          onChange={(e) => setRamaB(e.target.value)}
+          className="text-xs px-2 py-1.5 rounded bg-dk-2 border border-dk-3 text-white"
+        >
+          <option value="A">{division} A</option>
+          <option value="B">{division} B</option>
+          <option value="C">{division} C</option>
+        </select>
+
+        <button
+          onClick={handleCompare}
+          disabled={ramaA === ramaB || loadingCompare}
+          className="text-[10px] font-bold px-4 py-1.5 rounded bg-gn text-white hover:bg-gn-dark disabled:opacity-40"
+        >
+          {loadingCompare ? "..." : "Comparar"}
+        </button>
+      </div>
+
+      {hasData && (
+        <div className="space-y-4">
+          {/* Summary comparison */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card-compact">
+              <p className="text-xs font-bold text-nv mb-2">{division} {ramaA}</p>
+              <div className="grid grid-cols-5 gap-1 text-center">
+                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold">{summaryA.pj}</p></div>
+                <div><p className="text-[9px] text-gn">G</p><p className="text-sm font-bold text-gn">{summaryA.g}</p></div>
+                <div><p className="text-[9px] text-rd">P</p><p className="text-sm font-bold text-rd">{summaryA.p}</p></div>
+                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold">{summaryA.pf}</p></div>
+                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold">{summaryA.pc}</p></div>
+              </div>
+            </div>
+            <div className="card-compact">
+              <p className="text-xs font-bold text-nv mb-2">{division} {ramaB}</p>
+              <div className="grid grid-cols-5 gap-1 text-center">
+                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold">{summaryB.pj}</p></div>
+                <div><p className="text-[9px] text-gn">G</p><p className="text-sm font-bold text-gn">{summaryB.g}</p></div>
+                <div><p className="text-[9px] text-rd">P</p><p className="text-sm font-bold text-rd">{summaryB.p}</p></div>
+                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold">{summaryB.pf}</p></div>
+                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold">{summaryB.pc}</p></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Module-by-module comparison */}
+          <div className="space-y-2">
+            {MODULE_CONFIG.map((mod) => {
+              const a = statsA[mod.id] || { propio: 0, rival: 0 };
+              const b = statsB[mod.id] || { propio: 0, rival: 0 };
+              const totalA = a.propio + a.rival;
+              const totalB = b.propio + b.rival;
+              const effA = totalA > 0 ? Math.round((a.propio / totalA) * 100) : 0;
+              const effB = totalB > 0 ? Math.round((b.propio / totalB) * 100) : 0;
+              const better = effA > effB ? "A" : effB > effA ? "B" : "=";
+
+              return (
+                <div key={mod.id} className="card-compact">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span>{mod.icon}</span>
+                    <span className="text-[10px] font-bold text-g-4 uppercase flex-1">{mod.label}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className={`text-lg font-extrabold ${better === "A" ? "text-gn" : "text-white"}`}>{effA}%</p>
+                      <p className="text-[9px] text-g-4">{division} {ramaA} ({totalA})</p>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <span className={`text-xs font-bold ${better === "A" ? "text-gn" : better === "B" ? "text-bl" : "text-g-4"}`}>
+                        {better === "A" ? `← ${ramaA}` : better === "B" ? `${ramaB} →` : "="}
+                      </span>
+                    </div>
+                    <div>
+                      <p className={`text-lg font-extrabold ${better === "B" ? "text-gn" : "text-white"}`}>{effB}%</p>
+                      <p className="text-[9px] text-g-4">{division} {ramaB} ({totalB})</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
