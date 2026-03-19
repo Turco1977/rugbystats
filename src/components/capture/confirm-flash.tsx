@@ -6,12 +6,22 @@ export function ConfirmFlash() {
   const selectedModulo = useCaptureStore((s) => s.selectedModulo);
   const selectedResultado = useCaptureStore((s) => s.selectedResultado);
 
-  const isPositive =
-    selectedResultado === "obtenido" ||
-    selectedResultado === "obtenida" ||
-    selectedResultado === "puntos" ||
-    selectedResultado === "exitosa" ||
-    selectedResultado === "eficiente";
+  // ATAQUE always green, DEFENSA always red, others by resultado
+  let isPositive: boolean;
+  if (selectedModulo === "ATAQUE") {
+    isPositive = true;
+  } else if (selectedModulo === "DEFENSA") {
+    isPositive = false;
+  } else {
+    isPositive =
+      selectedResultado === "obtenido" ||
+      selectedResultado === "obtenida" ||
+      selectedResultado === "robado" ||
+      selectedResultado === "recuperada" ||
+      selectedResultado === "puntos" ||
+      selectedResultado === "exitosa" ||
+      selectedResultado === "eficiente";
+  }
 
   return (
     <div
