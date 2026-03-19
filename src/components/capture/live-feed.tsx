@@ -3,13 +3,19 @@
 import { useCaptureStore } from "@/hooks/use-capture-store";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
+import { createClient } from "@/lib/supabase/client";
 
 export function LiveFeed() {
   const partidoId = useCaptureStore((s) => s.partidoId);
   const realtimeEvents = useRealtimeEventos(partidoId);
 
+  const handleDelete = async (eventId: string) => {
+    const supabase = createClient();
+    await supabase.from("eventos").delete().eq("id", eventId);
+  };
+
   // Map realtime events to feed format
-  const feedEvents = realtimeEvents.slice(0, 10).map((ev) => ({
+  const feedEvents = realtimeEvents.slice(0, 20).map((ev) => ({
     id: ev.id,
     modulo: ev.modulo,
     perspectiva: ev.perspectiva,
@@ -29,7 +35,7 @@ export function LiveFeed() {
   }
 
   return (
-    <div className="border-b border-dk-3 max-h-[120px] overflow-y-auto">
+    <div className="border-b border-dk-3 max-h-[160px] overflow-y-auto">
       {feedEvents.map((ev) => {
         const mod = MODULE_CONFIG.find((m) => m.id === ev.modulo);
         const motivoLabel =
@@ -56,9 +62,16 @@ export function LiveFeed() {
             <span className="text-dk-4">
               {motivoLabel} → {ev.resultado}
             </span>
-            <span className="ml-auto text-dk-4 text-[9px]">
+            <span className="text-dk-4 text-[9px]">
               {ev.cargadoPor}
             </span>
+            <button
+              onClick={() => handleDelete(ev.id)}
+              className="ml-auto text-rd-light/50 hover:text-rd text-xs px-1 transition-colors"
+              title="Borrar evento"
+            >
+              ✕
+            </button>
           </div>
         );
       })}
