@@ -81,11 +81,14 @@ export default function DirectorPage() {
   const handleDeletePartido = async (partidoId: string) => {
     if (!confirm("¿Estás seguro de eliminar este partido?")) return;
     const supabase = createClient();
-    // Delete sessions first, then partido
-    await supabase.from("events").delete().eq("session_id",
-      (await supabase.from("sessions").select("id").eq("partido_id", partidoId)).data?.map(s => s.id)?.[0] || ""
-    );
-    await supabase.from("sessions").delete().eq("partido_id", partidoId);
+    // Get session IDs first
+    const { data: sessions } = await supabase.from("sessions").select("id").eq("partido_id", partidoId);
+    if (sessions && sessions.length > 0) {
+      for (const s of sessions) {
+        await supabase.from("eventos").delete().eq("session_id", s.id);
+      }
+      await supabase.from("sessions").delete().eq("partido_id", partidoId);
+    }
     await supabase.from("partidos").delete().eq("id", partidoId);
     fetchPartidos();
   };
