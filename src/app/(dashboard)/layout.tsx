@@ -23,6 +23,7 @@ export default function DashboardLayout({
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [mode, setMode] = useState<"director" | "carga">("director");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,6 +41,9 @@ export default function DashboardLayout({
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUserEmail(data.user.email ?? null);
+        // Check superadmin role from user_metadata
+        const role = (data.user.user_metadata as Record<string, string>)?.role;
+        setIsSuperAdmin(role === "superadmin");
       } else {
         router.push("/");
       }
@@ -156,31 +160,33 @@ export default function DashboardLayout({
             <h1 className="text-base font-bold text-nv dark:text-white">Rugby Stats</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Mode toggle — Airbnb-style pill */}
-            <button
-              onClick={toggleMode}
-              className="relative flex items-center bg-g-1 dark:bg-dk-3 rounded-full p-0.5 border border-g-2 dark:border-dk-3"
-              title={mode === "director" ? "Cambiar a modo Carga" : "Cambiar a modo Director"}
-            >
-              <span
-                className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
-                  mode === "director"
-                    ? "bg-nv text-white shadow-sm"
-                    : "text-g-4 dark:text-dk-4"
-                }`}
+            {/* Mode toggle — Airbnb-style pill (SuperAdmin only) */}
+            {isSuperAdmin && (
+              <button
+                onClick={toggleMode}
+                className="relative flex items-center bg-g-1 dark:bg-dk-3 rounded-full p-0.5 border border-g-2 dark:border-dk-3"
+                title={mode === "director" ? "Cambiar a modo Carga" : "Cambiar a modo Director"}
               >
-                Director
-              </span>
-              <span
-                className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
-                  mode === "carga"
-                    ? "bg-gn text-white shadow-sm"
-                    : "text-g-4 dark:text-dk-4"
-                }`}
-              >
-                Carga
-              </span>
-            </button>
+                <span
+                  className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                    mode === "director"
+                      ? "bg-nv text-white shadow-sm"
+                      : "text-g-4 dark:text-dk-4"
+                  }`}
+                >
+                  Director
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                    mode === "carga"
+                      ? "bg-gn text-white shadow-sm"
+                      : "text-g-4 dark:text-dk-4"
+                  }`}
+                >
+                  Carga
+                </span>
+              </button>
+            )}
 
             <button
               onClick={toggleDark}
