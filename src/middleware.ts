@@ -4,9 +4,6 @@ import { NextResponse, type NextRequest } from "next/server";
 // Routes that require authentication
 const PROTECTED_ROUTES = ["/director", "/historial", "/jornada", "/incidencias", "/line", "/scrum", "/salidas", "/ataque", "/defensa", "/pie"];
 
-// Routes that require superadmin role
-const ADMIN_ROUTES = ["/director"];
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -47,16 +44,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Admin routes → check superadmin role
-  const isAdminRoute = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
-  if (isAdminRoute) {
-    const role = (user.user_metadata as Record<string, string>)?.role;
-    if (role !== "superadmin") {
-      // Non-admin trying to access /director → redirect to historial
-      return NextResponse.redirect(new URL("/historial", request.url));
-    }
   }
 
   return response;
