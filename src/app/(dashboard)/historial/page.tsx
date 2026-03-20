@@ -359,7 +359,7 @@ function Comparador({ division }: { division: string }) {
           if (eventos) {
             for (const ev of eventos) {
               if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
-              const persp = (ev.perspectiva === "propio" || ev.perspectiva === "rival") ? ev.perspectiva : "propio";
+              const persp: "propio" | "rival" = ev.perspectiva === "rival" ? "rival" : "propio";
               moduleStats[ev.modulo][persp]++;
             }
           }
@@ -367,7 +367,7 @@ function Comparador({ division }: { division: string }) {
       } else {
         for (const ev of evList) {
           if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
-          const persp = (ev.perspectiva === "propio" || ev.perspectiva === "rival") ? ev.perspectiva : "propio";
+          const persp: "propio" | "rival" = ev.perspectiva === "rival" ? "rival" : "propio";
           moduleStats[ev.modulo][persp]++;
         }
       }
