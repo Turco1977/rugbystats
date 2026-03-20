@@ -1,6 +1,6 @@
 "use client";
-// v2 - no demo data
-import { useState, useEffect } from "react";
+// v3 - auto-load comparador, no demo data
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 import type { Division } from "@/lib/types/domain";
@@ -41,11 +41,6 @@ export default function HistorialPage() {
       setLoading(true);
       const supabase = createClient();
 
-      // Fetch finished partidos for this division
-      const divFilter = selectedRama === "Todos"
-        ? `${selectedDivision}%`
-        : `${selectedDivision}${selectedRama}`;
-
       let query = supabase
         .from("partidos")
         .select(`
@@ -70,20 +65,30 @@ export default function HistorialPage() {
       // Fetch eventos for these partidos
       if (matchData.length > 0) {
         const partidoIds = matchData.map((p) => p.id);
-        const { data: evData } = await supabase
+        // Try direct partido_id first, then fallback to session_id
+        const { data: evDirect } = await supabase
           .from("eventos")
-          .select(`
-            id, modulo, perspectiva, data,
-            session:sessions!session_id(partido_id)
-          `)
-          .in("session_id",
-            (await supabase
-              .from("sessions")
-              .select("id")
-              .in("partido_id", partidoIds)
-            ).data?.map((s: { id: string }) => s.id) || []
-          );
-        if (evData) setEventos(evData as unknown as EventoHistorial[]);
+          .select("id, modulo, perspectiva, data")
+          .in("partido_id", partidoIds);
+
+        if (evDirect && evDirect.length > 0) {
+          setEventos(evDirect as unknown as EventoHistorial[]);
+        } else {
+          // Fallback: through sessions
+          const { data: sessions } = await supabase
+            .from("sessions")
+            .select("id")
+            .in("partido_id", partidoIds);
+          if (sessions && sessions.length > 0) {
+            const { data: evData } = await supabase
+              .from("eventos")
+              .select("id, modulo, perspectiva, data")
+              .in("session_id", sessions.map((s: { id: string }) => s.id));
+            if (evData) setEventos(evData as unknown as EventoHistorial[]);
+          } else {
+            setEventos([]);
+          }
+        }
       } else {
         setEventos([]);
       }
@@ -102,7 +107,12 @@ export default function HistorialPage() {
   const moduleStats: Record<string, { propio: number; rival: number }> = {};
   for (const ev of eventos) {
     if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
-    moduleStats[ev.modulo][ev.perspectiva]++;
+    if (ev.perspectiva === "propio" || ev.perspectiva === "rival") {
+      moduleStats[ev.modulo][ev.perspectiva]++;
+    } else {
+      // Default to propio for modules without perspective
+      moduleStats[ev.modulo].propio++;
+    }
   }
 
   // Win/loss/draw counts
@@ -166,7 +176,7 @@ export default function HistorialPage() {
       <div className="grid grid-cols-5 gap-2 mb-6">
         <div className="card-compact text-center">
           <p className="text-[10px] text-g-4 font-semibold uppercase">PJ</p>
-          <p className="text-xl font-extrabold text-nv">{filteredPartidos.length}</p>
+          <p className="text-xl font-extrabold text-nv dark:text-white">{filteredPartidos.length}</p>
         </div>
         <div className="card-compact text-center">
           <p className="text-[10px] text-gn font-semibold uppercase">G</p>
@@ -178,11 +188,11 @@ export default function HistorialPage() {
         </div>
         <div className="card-compact text-center">
           <p className="text-[10px] text-g-4 font-semibold uppercase">PF</p>
-          <p className="text-xl font-extrabold text-nv">{totalPF}</p>
+          <p className="text-xl font-extrabold text-nv dark:text-white">{totalPF}</p>
         </div>
         <div className="card-compact text-center">
           <p className="text-[10px] text-g-4 font-semibold uppercase">PC</p>
-          <p className="text-xl font-extrabold text-nv">{totalPC}</p>
+          <p className="text-xl font-extrabold text-nv dark:text-white">{totalPC}</p>
         </div>
       </div>
 
@@ -213,16 +223,16 @@ export default function HistorialPage() {
                 const rival = p.equipo_visitante?.short_name || p.equipo_visitante?.name || "—";
                 const dateStr = p.jornada?.date
                   ? new Date(p.jornada.date + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })
-                  : "—";
+                  : new Date(p.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
                 return (
                   <tr key={p.id} className="border-t border-dk-3 hover:bg-dk-2 transition-colors">
                     <td className="py-2.5 px-3">
-                      <span className="text-xs font-bold text-nv">{p.division}</span>
+                      <span className="text-xs font-bold text-nv dark:text-white">{p.division}</span>
                     </td>
-                    <td className="py-2.5 px-3 text-xs font-semibold text-g-5">{rival}</td>
+                    <td className="py-2.5 px-3 text-xs font-semibold text-g-5 dark:text-dk-4">{rival}</td>
                     <td className="py-2.5 px-3 text-center">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        isWin ? "bg-gn-bg text-gn-forest" : isDraw ? "bg-yw-bg text-yw-dark" : "bg-rd-bg text-rd"
+                        isWin ? "bg-gn/20 text-gn" : isDraw ? "bg-yellow-500/20 text-yellow-400" : "bg-rd/20 text-rd"
                       }`}>
                         {isWin ? "G" : isDraw ? "E" : "P"}
                       </span>
@@ -254,7 +264,7 @@ export default function HistorialPage() {
       <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
         Acumulado por Módulo — {selectedDivision}{selectedRama !== "Todos" ? ` ${selectedRama}` : ""}
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         {MODULE_CONFIG.map((mod) => {
           const data = moduleStats[mod.id] || { propio: 0, rival: 0 };
           const total = data.propio + data.rival;
@@ -270,12 +280,12 @@ export default function HistorialPage() {
                 <span className="text-base">{mod.icon}</span>
                 <span className="text-[10px] font-bold text-g-4 uppercase tracking-wider">{mod.label}</span>
               </div>
-              <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-g-1 mb-2">
+              <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-dk-3 mb-2">
                 <div className="bg-gn rounded-l-full" style={{ width: `${propioPercent}%` }} />
                 <div className="bg-rd rounded-r-full" style={{ width: `${100 - propioPercent}%` }} />
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="font-bold text-gn-dark">P: {data.propio}</span>
+                <span className="font-bold text-gn">P: {data.propio}</span>
                 <span className="font-bold text-rd">R: {data.rival}</span>
               </div>
               <p className="text-[10px] text-g-3 mt-1">Total: {total}</p>
@@ -283,15 +293,15 @@ export default function HistorialPage() {
           );
         })}
       </div>
+
       {/* Comparador */}
       <Comparador division={selectedDivision} />
     </div>
   );
 }
 
-// --- Comparador Component ---
+// --- Comparador Component (auto-loads) ---
 function Comparador({ division }: { division: string }) {
-  const [compareMode, setCompareMode] = useState<"rama" | "partido">("rama");
   const [ramaA, setRamaA] = useState("A");
   const [ramaB, setRamaB] = useState("B");
   const [statsA, setStatsA] = useState<Record<string, { propio: number; rival: number }>>({});
@@ -299,8 +309,9 @@ function Comparador({ division }: { division: string }) {
   const [summaryA, setSummaryA] = useState({ pj: 0, g: 0, p: 0, pf: 0, pc: 0 });
   const [summaryB, setSummaryB] = useState({ pj: 0, g: 0, p: 0, pf: 0, pc: 0 });
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  const fetchRamaStats = async (rama: string) => {
+  const fetchRamaStats = useCallback(async (rama: string) => {
     const supabase = createClient();
     const divKey = `${division}${rama}`;
 
@@ -323,31 +334,50 @@ function Comparador({ division }: { division: string }) {
     const moduleStats: Record<string, { propio: number; rival: number }> = {};
 
     if (partidoIds.length > 0) {
-      const { data: sessions } = await supabase
-        .from("sessions")
-        .select("id")
+      // Try direct partido_id
+      const { data: evDirect } = await supabase
+        .from("eventos")
+        .select("modulo, perspectiva")
         .in("partido_id", partidoIds);
 
-      if (sessions && sessions.length > 0) {
-        const sessionIds = sessions.map((s: { id: string }) => s.id);
-        const { data: eventos } = await supabase
-          .from("eventos")
-          .select("modulo, perspectiva")
-          .in("session_id", sessionIds);
+      const evList = evDirect && evDirect.length > 0 ? evDirect : [];
 
-        if (eventos) {
-          for (const ev of eventos) {
-            if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
-            moduleStats[ev.modulo][ev.perspectiva as "propio" | "rival"]++;
+      if (evList.length === 0) {
+        // Fallback: through sessions
+        const { data: sessions } = await supabase
+          .from("sessions")
+          .select("id")
+          .in("partido_id", partidoIds);
+
+        if (sessions && sessions.length > 0) {
+          const sessionIds = sessions.map((s: { id: string }) => s.id);
+          const { data: eventos } = await supabase
+            .from("eventos")
+            .select("modulo, perspectiva")
+            .in("session_id", sessionIds);
+
+          if (eventos) {
+            for (const ev of eventos) {
+              if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
+              const persp = (ev.perspectiva === "propio" || ev.perspectiva === "rival") ? ev.perspectiva : "propio";
+              moduleStats[ev.modulo][persp]++;
+            }
           }
+        }
+      } else {
+        for (const ev of evList) {
+          if (!moduleStats[ev.modulo]) moduleStats[ev.modulo] = { propio: 0, rival: 0 };
+          const persp = (ev.perspectiva === "propio" || ev.perspectiva === "rival") ? ev.perspectiva : "propio";
+          moduleStats[ev.modulo][persp]++;
         }
       }
     }
 
     return { stats: moduleStats, summary };
-  };
+  }, [division]);
 
-  const handleCompare = async () => {
+  const handleCompare = useCallback(async () => {
+    if (ramaA === ramaB) return;
     setLoadingCompare(true);
     const [resultA, resultB] = await Promise.all([
       fetchRamaStats(ramaA),
@@ -358,42 +388,38 @@ function Comparador({ division }: { division: string }) {
     setSummaryA(resultA.summary);
     setSummaryB(resultB.summary);
     setLoadingCompare(false);
-  };
+    setLoaded(true);
+  }, [ramaA, ramaB, fetchRamaStats]);
 
-  const hasData = Object.keys(statsA).length > 0 || Object.keys(statsB).length > 0;
+  // Auto-load on mount and when division changes
+  useEffect(() => {
+    setLoaded(false);
+    handleCompare();
+  }, [division]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="mt-8">
-      <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-        Comparador
+    <div className="mt-2">
+      <h3 className="text-sm font-bold text-nv dark:text-white mb-3 flex items-center gap-2">
+        <span>📊</span> Comparador de Ramas
       </h3>
 
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setCompareMode("rama")}
-            className={`text-[10px] font-bold px-3 py-1.5 rounded ${compareMode === "rama" ? "bg-nv text-white" : "bg-dk-2 text-g-4"}`}
-          >
-            Rama vs Rama
-          </button>
-        </div>
-
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <select
           value={ramaA}
           onChange={(e) => setRamaA(e.target.value)}
-          className="text-xs px-2 py-1.5 rounded bg-dk-2 border border-dk-3 text-white"
+          className="text-xs px-3 py-2 rounded-md bg-dk-2 border border-dk-3 text-white font-bold"
         >
           <option value="A">{division} A</option>
           <option value="B">{division} B</option>
           <option value="C">{division} C</option>
         </select>
 
-        <span className="text-xs text-g-4 font-bold">VS</span>
+        <span className="text-sm text-g-4 font-extrabold">VS</span>
 
         <select
           value={ramaB}
           onChange={(e) => setRamaB(e.target.value)}
-          className="text-xs px-2 py-1.5 rounded bg-dk-2 border border-dk-3 text-white"
+          className="text-xs px-3 py-2 rounded-md bg-dk-2 border border-dk-3 text-white font-bold"
         >
           <option value="A">{division} A</option>
           <option value="B">{division} B</option>
@@ -403,40 +429,44 @@ function Comparador({ division }: { division: string }) {
         <button
           onClick={handleCompare}
           disabled={ramaA === ramaB || loadingCompare}
-          className="text-[10px] font-bold px-4 py-1.5 rounded bg-gn text-white hover:bg-gn-dark disabled:opacity-40"
+          className="text-xs font-bold px-5 py-2 rounded-md bg-gn text-white hover:bg-gn-dark disabled:opacity-40 transition-colors"
         >
-          {loadingCompare ? "..." : "Comparar"}
+          {loadingCompare ? "Cargando..." : "Comparar"}
         </button>
       </div>
 
-      {hasData && (
+      {ramaA === ramaB && (
+        <p className="text-xs text-g-4 mb-4">Seleccioná dos ramas diferentes para comparar.</p>
+      )}
+
+      {loaded && ramaA !== ramaB && (
         <div className="space-y-4">
           {/* Summary comparison */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="card-compact">
-              <p className="text-xs font-bold text-nv mb-2">{division} {ramaA}</p>
+            <div className="card-compact border-l-4 border-l-nv">
+              <p className="text-xs font-bold text-nv dark:text-white mb-2">{division} {ramaA}</p>
               <div className="grid grid-cols-5 gap-1 text-center">
-                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold">{summaryA.pj}</p></div>
+                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold dark:text-white">{summaryA.pj}</p></div>
                 <div><p className="text-[9px] text-gn">G</p><p className="text-sm font-bold text-gn">{summaryA.g}</p></div>
                 <div><p className="text-[9px] text-rd">P</p><p className="text-sm font-bold text-rd">{summaryA.p}</p></div>
-                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold">{summaryA.pf}</p></div>
-                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold">{summaryA.pc}</p></div>
+                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold dark:text-white">{summaryA.pf}</p></div>
+                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold dark:text-white">{summaryA.pc}</p></div>
               </div>
             </div>
-            <div className="card-compact">
-              <p className="text-xs font-bold text-nv mb-2">{division} {ramaB}</p>
+            <div className="card-compact border-l-4 border-l-bl">
+              <p className="text-xs font-bold text-bl mb-2">{division} {ramaB}</p>
               <div className="grid grid-cols-5 gap-1 text-center">
-                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold">{summaryB.pj}</p></div>
+                <div><p className="text-[9px] text-g-4">PJ</p><p className="text-sm font-bold dark:text-white">{summaryB.pj}</p></div>
                 <div><p className="text-[9px] text-gn">G</p><p className="text-sm font-bold text-gn">{summaryB.g}</p></div>
                 <div><p className="text-[9px] text-rd">P</p><p className="text-sm font-bold text-rd">{summaryB.p}</p></div>
-                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold">{summaryB.pf}</p></div>
-                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold">{summaryB.pc}</p></div>
+                <div><p className="text-[9px] text-g-4">PF</p><p className="text-sm font-bold dark:text-white">{summaryB.pf}</p></div>
+                <div><p className="text-[9px] text-g-4">PC</p><p className="text-sm font-bold dark:text-white">{summaryB.pc}</p></div>
               </div>
             </div>
           </div>
 
           {/* Module-by-module comparison */}
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {MODULE_CONFIG.map((mod) => {
               const a = statsA[mod.id] || { propio: 0, rival: 0 };
               const b = statsB[mod.id] || { propio: 0, rival: 0 };
@@ -448,29 +478,42 @@ function Comparador({ division }: { division: string }) {
 
               return (
                 <div key={mod.id} className="card-compact">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span>{mod.icon}</span>
-                    <span className="text-[10px] font-bold text-g-4 uppercase flex-1">{mod.label}</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`w-3 h-3 rounded-full ${mod.color}`} />
+                    <span className="text-[11px] font-bold text-g-4 uppercase flex-1">{mod.label}</span>
+                    {better !== "=" && (
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                        better === "A" ? "bg-nv/20 text-nv dark:text-white" : "bg-bl/20 text-bl"
+                      }`}>
+                        {better === "A" ? ramaA : ramaB} mejor
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <p className={`text-lg font-extrabold ${better === "A" ? "text-gn" : "text-white"}`}>{effA}%</p>
-                      <p className="text-[9px] text-g-4">{division} {ramaA} ({totalA})</p>
+                      <p className={`text-2xl font-extrabold ${better === "A" ? "text-gn" : "text-white"}`}>{effA}%</p>
+                      <p className="text-[9px] text-g-4">{division} {ramaA}</p>
+                      <p className="text-[9px] text-g-3">({totalA} ev)</p>
                     </div>
                     <div className="flex items-center justify-center">
-                      <span className={`text-xs font-bold ${better === "A" ? "text-gn" : better === "B" ? "text-bl" : "text-g-4"}`}>
-                        {better === "A" ? `← ${ramaA}` : better === "B" ? `${ramaB} →` : "="}
-                      </span>
+                      <span className="text-g-3 text-xs font-bold">VS</span>
                     </div>
                     <div>
-                      <p className={`text-lg font-extrabold ${better === "B" ? "text-gn" : "text-white"}`}>{effB}%</p>
-                      <p className="text-[9px] text-g-4">{division} {ramaB} ({totalB})</p>
+                      <p className={`text-2xl font-extrabold ${better === "B" ? "text-gn" : "text-white"}`}>{effB}%</p>
+                      <p className="text-[9px] text-g-4">{division} {ramaB}</p>
+                      <p className="text-[9px] text-g-3">({totalB} ev)</p>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {summaryA.pj === 0 && summaryB.pj === 0 && (
+            <p className="text-center text-xs text-g-4 py-4">
+              No hay partidos finalizados para comparar en {division} {ramaA} vs {division} {ramaB}
+            </p>
+          )}
         </div>
       )}
     </div>

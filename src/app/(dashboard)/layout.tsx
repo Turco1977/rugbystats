@@ -22,6 +22,7 @@ export default function DashboardLayout({
   const [dark, setDark] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [mode, setMode] = useState<"director" | "carga">("director");
   const router = useRouter();
 
   useEffect(() => {
@@ -30,6 +31,9 @@ export default function DashboardLayout({
       setDark(true);
       document.documentElement.classList.add("dark");
     }
+
+    const savedMode = localStorage.getItem("rugbystats-mode") as "director" | "carga" | null;
+    if (savedMode) setMode(savedMode);
 
     // Check auth
     const supabase = createClient();
@@ -48,6 +52,17 @@ export default function DashboardLayout({
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("rugbystats-dark", String(next));
+  };
+
+  const toggleMode = () => {
+    const next = mode === "director" ? "carga" : "director";
+    setMode(next);
+    localStorage.setItem("rugbystats-mode", next);
+    if (next === "carga") {
+      router.push("/captura");
+    } else {
+      router.push("/director");
+    }
   };
 
   const handleLogout = async () => {
@@ -141,6 +156,32 @@ export default function DashboardLayout({
             <h1 className="text-base font-bold text-nv dark:text-white">Rugby Stats</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mode toggle — Airbnb-style pill */}
+            <button
+              onClick={toggleMode}
+              className="relative flex items-center bg-g-1 dark:bg-dk-3 rounded-full p-0.5 border border-g-2 dark:border-dk-3"
+              title={mode === "director" ? "Cambiar a modo Carga" : "Cambiar a modo Director"}
+            >
+              <span
+                className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                  mode === "director"
+                    ? "bg-nv text-white shadow-sm"
+                    : "text-g-4 dark:text-dk-4"
+                }`}
+              >
+                Director
+              </span>
+              <span
+                className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                  mode === "carga"
+                    ? "bg-gn text-white shadow-sm"
+                    : "text-g-4 dark:text-dk-4"
+                }`}
+              >
+                Carga
+              </span>
+            </button>
+
             <button
               onClick={toggleDark}
               className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-g-1 dark:hover:bg-white/10 transition-colors"
@@ -157,7 +198,7 @@ export default function DashboardLayout({
                 </svg>
               )}
             </button>
-            <span className="badge bg-gn-bg text-gn-forest">
+            <span className="badge bg-gn-bg text-gn-forest hidden sm:inline-flex">
               Temporada 2026
             </span>
             {userEmail && (

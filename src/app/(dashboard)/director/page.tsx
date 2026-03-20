@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MatchCard } from "@/components/dashboard/match-card";
 import { CreateMatchModal } from "@/components/dashboard/create-match-modal";
+import { EditMatchModal } from "@/components/dashboard/edit-match-modal";
 import { generateSessionCode } from "@/lib/utils/session-code";
 import type { Division, PartidoStatus } from "@/lib/types/domain";
 
@@ -25,6 +26,8 @@ export default function DirectorPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPartido, setEditingPartido] = useState<PartidoRow | null>(null);
 
   const fetchPartidos = useCallback(async () => {
     try {
@@ -81,7 +84,6 @@ export default function DirectorPage() {
   const handleDeletePartido = async (partidoId: string) => {
     if (!confirm("¿Estás seguro de eliminar este partido?")) return;
     const supabase = createClient();
-    // Get session IDs first
     const { data: sessions } = await supabase.from("sessions").select("id").eq("partido_id", partidoId);
     if (sessions && sessions.length > 0) {
       for (const s of sessions) {
@@ -93,11 +95,16 @@ export default function DirectorPage() {
     fetchPartidos();
   };
 
+  const handleEdit = (partido: PartidoRow) => {
+    setEditingPartido(partido);
+    setEditModalOpen(true);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-nv">Director Rugby</h2>
+          <h2 className="text-xl font-bold text-nv dark:text-white">Director Rugby</h2>
           <p className="text-sm text-g-4 mt-0.5">
             Partidos en curso y programados — Temporada 2026
           </p>
@@ -144,7 +151,7 @@ export default function DirectorPage() {
                     <div key={p.id} className="relative">
                       <div className="absolute -top-2 -right-2 z-10 flex gap-1">
                         <button
-                          onClick={() => { /* TODO: edit modal */ }}
+                          onClick={() => handleEdit(p)}
                           className="bg-bl text-white w-7 h-7 rounded-full text-xs hover:bg-blue-600 transition-colors flex items-center justify-center"
                           title="Editar partido"
                         >
@@ -203,13 +210,22 @@ export default function DirectorPage() {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {scheduledPartidos.map((p) => (
                   <div key={p.id} className="relative">
-                    <button
-                      onClick={() => handleDeletePartido(p.id)}
-                      className="absolute -top-2 -right-2 z-10 bg-rd text-white w-7 h-7 rounded-full text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center"
-                      title="Eliminar partido"
-                    >
-                      ✕
-                    </button>
+                    <div className="absolute -top-2 -right-2 z-10 flex gap-1">
+                      <button
+                        onClick={() => handleEdit(p)}
+                        className="bg-bl text-white w-7 h-7 rounded-full text-xs hover:bg-blue-600 transition-colors flex items-center justify-center"
+                        title="Editar partido"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeletePartido(p.id)}
+                        className="bg-rd text-white w-7 h-7 rounded-full text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center"
+                        title="Eliminar partido"
+                      >
+                        ✕
+                      </button>
+                    </div>
                     <MatchCard
                       id={p.id}
                       division={p.division}
@@ -254,6 +270,13 @@ export default function DirectorPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={fetchPartidos}
+      />
+
+      <EditMatchModal
+        open={editModalOpen}
+        onClose={() => { setEditModalOpen(false); setEditingPartido(null); }}
+        onUpdated={fetchPartidos}
+        partido={editingPartido}
       />
     </div>
   );
