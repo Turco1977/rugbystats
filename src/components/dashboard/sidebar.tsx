@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 
 const NAV_ITEMS = [
@@ -45,7 +46,7 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 py-4 overflow-y-auto">
         {NAV_ITEMS.map((item) => (
-          <a
+          <Link
             key={item.href}
             href={item.href}
             className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors ${
@@ -58,7 +59,7 @@ export function Sidebar() {
           >
             <span className="text-lg">{item.icon}</span>
             {!collapsed && <span>{item.label}</span>}
-          </a>
+          </Link>
         ))}
 
         {/* Separator */}
@@ -71,7 +72,7 @@ export function Sidebar() {
 
         {/* Module nav */}
         {MODULE_NAV_ITEMS.map((item) => (
-          <a
+          <Link
             key={item.href}
             href={item.href}
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
@@ -89,12 +90,12 @@ export function Sidebar() {
               <span className="text-base">{item.icon}</span>
             </span>
             {!collapsed && <span>{item.label}</span>}
-          </a>
+          </Link>
         ))}
 
         {/* Incidencias */}
         <div className="border-t border-white/10 my-4 mx-4" />
-        <a
+        <Link
           href="/incidencias"
           className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
             collapsed ? "justify-center" : ""
@@ -109,7 +110,7 @@ export function Sidebar() {
             <span className="text-base">&#x1F6A8;</span>
           </span>
           {!collapsed && <span>Incidencias</span>}
-        </a>
+        </Link>
       </nav>
 
       {/* Collapse toggle */}

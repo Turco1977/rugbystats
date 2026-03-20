@@ -5,6 +5,7 @@ import { MODULE_CONFIG } from "@/lib/constants/modules";
 import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const MODULE_NAV_ITEMS = MODULE_CONFIG.map((mod) => ({
   href: `/${mod.id === "SALIDA" ? "salidas" : mod.id.toLowerCase()}`,
@@ -108,18 +109,18 @@ export default function DashboardLayout({
               </div>
             </div>
             <nav className="py-3">
-              <a href="/director" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+              <Link href="/director" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span className="text-lg">🎯</span> Director Rugby
-              </a>
-              <a href="/jornada" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+              </Link>
+              <Link href="/jornada" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span className="text-lg">📋</span> Fixture
-              </a>
-              <a href="/historial" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+              </Link>
+              <Link href="/historial" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span className="text-lg">📊</span> Historial
-              </a>
-              <a href="/captura" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gn hover:bg-white/5">
+              </Link>
+              <Link href="/captura" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gn hover:bg-white/5">
                 <span className="text-lg">🏉</span> Captura en Vivo
-              </a>
+              </Link>
 
               {/* Module links */}
               <div className="border-t border-white/10 my-3 mx-4" />
@@ -127,7 +128,7 @@ export default function DashboardLayout({
                 Módulos
               </p>
               {MODULE_NAV_ITEMS.map((item) => (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5"
@@ -137,16 +138,16 @@ export default function DashboardLayout({
                     <span className="text-sm">{item.icon}</span>
                   </span>
                   <span>{item.label}</span>
-                </a>
+                </Link>
               ))}
               <div className="border-t border-white/10 my-3 mx-4" />
-              <a href="/incidencias" className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+              <Link href="/incidencias" className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
                 <span className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-or" />
                   <span className="text-sm">&#x1F6A8;</span>
                 </span>
                 <span>Incidencias</span>
-              </a>
+              </Link>
             </nav>
           </aside>
         </div>
