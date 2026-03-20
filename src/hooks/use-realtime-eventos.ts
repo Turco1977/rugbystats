@@ -32,7 +32,7 @@ export function useRealtimeEventos(partidoId: string | null) {
         if (data) setEvents(data);
       });
 
-    // Subscribe to new events
+    // Subscribe to INSERT and DELETE events
     const channel = supabase
       .channel(`eventos:${partidoId}`)
       .on(
@@ -45,6 +45,21 @@ export function useRealtimeEventos(partidoId: string | null) {
         },
         (payload) => {
           setEvents((prev) => [payload.new as RealtimeEvento, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "eventos",
+          filter: `partido_id=eq.${partidoId}`,
+        },
+        (payload) => {
+          const deletedId = (payload.old as { id?: string })?.id;
+          if (deletedId) {
+            setEvents((prev) => prev.filter((e) => e.id !== deletedId));
+          }
         }
       )
       .subscribe();

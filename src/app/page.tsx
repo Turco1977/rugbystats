@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -28,13 +29,20 @@ export default function LoginPage() {
       return;
     }
 
+    // If middleware sent a redirect param, use it
+    const redirect = searchParams.get("redirect");
+    if (redirect) {
+      router.push(redirect);
+      return;
+    }
+
     // Detect division from email → go to entrenador page
     const divMatch = email.match(/^(m\d+)@/i);
     if (divMatch) {
       const div = divMatch[1].toUpperCase();
       router.push(`/entrenador?div=${div}`);
     } else {
-      // drugby or other admin users → director
+      // admin users → director
       router.push("/director");
     }
   };
