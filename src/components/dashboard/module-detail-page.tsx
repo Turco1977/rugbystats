@@ -82,18 +82,12 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
         const eventos = await getEventosByModulo(moduloType, "2026");
         const agg = aggregateStats(eventos ?? [], selectedPlantel, moduleConfig!);
 
-        // If no data, use demo
-        if (agg.totalPropio === 0 && agg.totalRival === 0) {
-          setStats(generateDemoStats(moduleConfig!));
-          setUsingDemo(true);
-        } else {
-          setStats(agg);
-          setUsingDemo(false);
-        }
+        setStats(agg);
+        setUsingDemo(false);
       } catch {
-        // Fallback to demo on error (e.g., no Supabase connection)
-        setStats(generateDemoStats(moduleConfig!));
-        setUsingDemo(true);
+        // On error show empty stats
+        setStats(null);
+        setUsingDemo(false);
       } finally {
         setLoading(false);
       }

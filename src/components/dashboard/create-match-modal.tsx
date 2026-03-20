@@ -235,14 +235,14 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-nv/60" onClick={handleClose}>
       <div
-        className="bg-white rounded-lg shadow-modal w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-dk-2 rounded-lg shadow-modal w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {step === "form" ? (
           <>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-g-2">
-              <h3 className="text-base font-bold text-nv">Crear Partido</h3>
-              <button onClick={handleClose} className="text-g-4 hover:text-nv text-lg">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-g-2 dark:border-dk-3">
+              <h3 className="text-base font-bold text-nv dark:text-white">Crear Partido</h3>
+              <button onClick={handleClose} className="text-g-4 hover:text-nv dark:hover:text-white text-lg">
                 ✕
               </button>
             </div>
@@ -261,7 +261,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                       className={`text-sm font-bold py-2.5 rounded-md transition-colors ${
                         selectedPlantel === p.key
                           ? "bg-nv text-white"
-                          : "bg-g-1 border border-g-2 text-g-5 hover:bg-g-2"
+                          : "bg-g-1 dark:bg-dk-3 border border-g-2 dark:border-dk-3 text-g-5 dark:text-dk-4 hover:bg-g-2"
                       }`}
                     >
                       {p.label}
@@ -291,7 +291,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                   onChange={(e) => { setRivalName(e.target.value); setErrorMsg(""); }}
                   placeholder="Ej: Peumayen, Marista, Liceo..."
                   list="rival-teams"
-                  className="w-full border border-g-3 rounded-md px-3 py-2.5 text-sm bg-white"
+                  className="w-full border border-g-3 dark:border-dk-3 rounded-md px-3 py-2.5 text-sm bg-white dark:bg-dk-3 dark:text-white"
                 />
                 <datalist id="rival-teams">
                   {rivalTeams.map((t) => (
@@ -306,7 +306,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                   Fecha del partido
                 </label>
                 <div
-                  className="relative w-full border border-g-3 rounded-md bg-white cursor-pointer"
+                  className="relative w-full border border-g-3 dark:border-dk-3 rounded-md bg-white dark:bg-dk-3 cursor-pointer"
                   onClick={() => {
                     const input = document.getElementById("match-date-input") as HTMLInputElement;
                     input?.showPicker?.();
@@ -318,7 +318,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-4 py-3 text-base bg-transparent appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 text-base bg-transparent dark:text-white appearance-none cursor-pointer"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-g-4">
@@ -350,7 +350,7 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
           /* Result step */
           <div className="px-5 py-6 text-center">
             <p className="text-2xl mb-1">🏉</p>
-            <h3 className="text-lg font-bold text-nv mb-1">Partido Creado!</h3>
+            <h3 className="text-lg font-bold text-nv dark:text-white mb-1">Partido Creado!</h3>
             <p className="text-sm text-g-5 mb-5">
               {resultPlantel} — Los Tordos vs {resultRival}
             </p>
@@ -358,8 +358,8 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
             <p className="text-xs font-bold text-g-4 uppercase tracking-wider mb-2">
               Código de Sesión
             </p>
-            <div className="bg-g-1 border-2 border-nv rounded-lg py-4 px-6 mb-6 inline-block">
-              <span className="text-3xl font-mono font-extrabold text-nv tracking-[0.3em]">
+            <div className="bg-g-1 dark:bg-dk-3 border-2 border-nv rounded-lg py-4 px-6 mb-6 inline-block">
+              <span className="text-3xl font-mono font-extrabold text-nv dark:text-white tracking-[0.3em]">
                 {resultCode}
               </span>
             </div>

@@ -213,12 +213,29 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
           }
         });
 
-      // Update score
-      supabase
-        .from("partidos")
-        .update({ puntos_local: newLocal, puntos_visitante: newVisitante })
-        .eq("id", state.partidoId)
-        .then(() => {});
+      // Update score atomically: read current DB value and add points
+      if (points > 0) {
+        supabase
+          .from("partidos")
+          .select("puntos_local, puntos_visitante")
+          .eq("id", state.partidoId)
+          .single()
+          .then(({ data: current }) => {
+            if (!current) return;
+            const dbLocal = current.puntos_local ?? 0;
+            const dbVisitante = current.puntos_visitante ?? 0;
+            const updatedLocal = state.selectedModulo === "ATAQUE" ? dbLocal + points : dbLocal;
+            const updatedVisitante = state.selectedModulo === "DEFENSA" ? dbVisitante + points : dbVisitante;
+            supabase
+              .from("partidos")
+              .update({ puntos_local: updatedLocal, puntos_visitante: updatedVisitante })
+              .eq("id", state.partidoId)
+              .then(() => {
+                // Sync local state with DB truth
+                set({ puntosLocal: updatedLocal, puntosVisitante: updatedVisitante });
+              });
+          });
+      }
     }
 
     // Auto-reset
@@ -257,14 +274,28 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
       } else if (lastEvent.modulo === "DEFENSA" && lastEvent.perspectiva === "propio") {
         newVisitante = Math.max(0, newVisitante - pts);
       }
-      // Update DB
+      // Update DB atomically
       if (state.partidoId) {
         const supabase = createClient();
         supabase
           .from("partidos")
-          .update({ puntos_local: newLocal, puntos_visitante: newVisitante })
+          .select("puntos_local, puntos_visitante")
           .eq("id", state.partidoId)
-          .then(() => {});
+          .single()
+          .then(({ data: current }) => {
+            if (!current) return;
+            const dbLocal = current.puntos_local ?? 0;
+            const dbVisitante = current.puntos_visitante ?? 0;
+            const updatedLocal = lastEvent.modulo === "ATAQUE" ? Math.max(0, dbLocal - pts) : dbLocal;
+            const updatedVisitante = lastEvent.modulo === "DEFENSA" ? Math.max(0, dbVisitante - pts) : dbVisitante;
+            supabase
+              .from("partidos")
+              .update({ puntos_local: updatedLocal, puntos_visitante: updatedVisitante })
+              .eq("id", state.partidoId)
+              .then(() => {
+                set({ puntosLocal: updatedLocal, puntosVisitante: updatedVisitante });
+              });
+          });
       }
     }
 

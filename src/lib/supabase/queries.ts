@@ -220,13 +220,13 @@ export async function createJornadaFromFixture(
   return jornada;
 }
 
-/** Fetch all eventos for a module across a season, with partido division and jornada info */
-export async function getEventosByModulo(modulo: string, season = "2026") {
+/** Fetch all eventos for a module, with partido division and jornada info */
+export async function getEventosByModulo(modulo: string, _season = "2026") {
   const { data, error } = await getSupabase()
     .from("eventos")
     .select(`
       *,
-      partidos!inner(
+      partidos(
         id,
         division,
         equipo_local:teams!equipo_local_id(id, name, short_name),
@@ -234,12 +234,13 @@ export async function getEventosByModulo(modulo: string, season = "2026") {
         puntos_local,
         puntos_visitante,
         fecha_numero,
-        jornadas!inner(id, name, date, season)
+        jornadas:jornadas!jornada_id(id, name, date)
       )
     `)
     .eq("modulo", modulo)
-    .eq("partidos.jornadas.season", season)
+    .eq("partidos.status", "finished")
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data;
+  // Filter out eventos without partido (orphaned)
+  return (data || []).filter((e: Record<string, unknown>) => e.partidos !== null);
 }
