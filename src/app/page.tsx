@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -125,5 +125,17 @@ export default function LoginPage() {
         Rugby Stats v0.1 — Los Tordos RC
       </p>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center bg-login-gradient">
+        <p className="text-white/50 animate-pulse">Cargando...</p>
+      </main>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
