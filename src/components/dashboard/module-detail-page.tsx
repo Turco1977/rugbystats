@@ -65,7 +65,7 @@ function generateDemoStats(moduleConfig: (typeof MODULE_CONFIG)[0]): AggregatedS
 }
 
 export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
-  const [selectedPlantel, setSelectedPlantel] = useState("A");
+  const [selectedPlantel, setSelectedPlantel] = useState("Todos");
   const [stats, setStats] = useState<AggregatedStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [usingDemo, setUsingDemo] = useState(false);
@@ -109,13 +109,23 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
           <div>
             <h2 className="text-lg font-bold text-nv">{moduleConfig.label}</h2>
             <p className="text-[10px] text-g-4">
-              Acumulado Temporada 2026 — {PLANTEL_MAP[selectedPlantel].label}
+              Acumulado Temporada 2026 — {selectedPlantel === "Todos" ? "Todos los Planteles" : PLANTEL_MAP[selectedPlantel].label}
             </p>
           </div>
         </div>
 
         {/* Plantel tabs */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setSelectedPlantel("Todos")}
+            className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
+              selectedPlantel === "Todos"
+                ? "bg-gn text-white"
+                : "bg-g-1 dark:bg-dk-3 border border-g-2 dark:border-dk-3 text-g-5 dark:text-dk-4 hover:bg-g-2"
+            }`}
+          >
+            Todos
+          </button>
           {Object.entries(PLANTEL_MAP).map(([key, val]) => (
             <button
               key={key}
@@ -123,7 +133,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
               className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
                 selectedPlantel === key
                   ? "bg-nv text-white"
-                  : "bg-g-1 border border-g-2 text-g-5 hover:bg-g-2"
+                  : "bg-g-1 dark:bg-dk-3 border border-g-2 dark:border-dk-3 text-g-5 dark:text-dk-4 hover:bg-g-2"
               }`}
             >
               {val.label}

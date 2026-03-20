@@ -45,11 +45,16 @@ export function aggregateStats(
 ): AggregatedStats {
   const divisions = PLANTEL_MAP[plantel]?.divisions ?? [];
 
-  // Filter eventos by division
-  const filtered = eventos.filter((e) => {
-    const partido = e.partidos as Record<string, unknown> | undefined;
-    return partido && divisions.includes(partido.division as string);
-  });
+  // Filter eventos by division (plantel "Todos" = no filter)
+  const filtered = plantel === "Todos"
+    ? eventos.filter((e) => {
+        const partido = e.partidos as Record<string, unknown> | undefined;
+        return !!partido;
+      })
+    : eventos.filter((e) => {
+        const partido = e.partidos as Record<string, unknown> | undefined;
+        return partido && divisions.includes(partido.division as string);
+      });
 
   let totalPropio = 0;
   let totalRival = 0;

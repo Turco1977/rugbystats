@@ -11,6 +11,7 @@ import { DetallePicker } from "@/components/capture/detalle-picker";
 import { ConfirmFlash } from "@/components/capture/confirm-flash";
 import { LiveFeed } from "@/components/capture/live-feed";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
+import { useSessionParticipants } from "@/hooks/use-session-participants";
 
 export default function CapturaSessionPage({
   params,
@@ -20,7 +21,6 @@ export default function CapturaSessionPage({
   const { sessionCode } = use(params);
   const searchParams = useSearchParams();
   const step = useCaptureStore((s) => s.step);
-  const events = useCaptureStore((s) => s.events);
   const undoLast = useCaptureStore((s) => s.undoLast);
   const resetFlow = useCaptureStore((s) => s.resetFlow);
   const undoStack = useCaptureStore((s) => s.undoStack);
@@ -29,12 +29,16 @@ export default function CapturaSessionPage({
   const puntosLocal = useCaptureStore((s) => s.puntosLocal);
   const puntosVisitante = useCaptureStore((s) => s.puntosVisitante);
   const cerrarPartido = useCaptureStore((s) => s.cerrarPartido);
+  const sessionId = useCaptureStore((s) => s.sessionId);
 
   const [joining, setJoining] = useState(true);
   const [error, setError] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [periodo, setPeriodo] = useState<"1T" | "2T">("1T");
+  const [showParticipants, setShowParticipants] = useState(false);
   const partidoId = useCaptureStore((s) => s.partidoId);
   const realtimeEvents = useRealtimeEventos(partidoId);
+  const participants = useSessionParticipants(sessionId);
 
   const handleCerrar = async () => {
     if (!confirm("¿Cerrar partido? Se marcará como finalizado.")) return;
@@ -98,11 +102,33 @@ export default function CapturaSessionPage({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Period toggle */}
+          <div className="flex bg-dk-2 rounded-full p-0.5">
+            <button
+              onClick={() => setPeriodo("1T")}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
+                periodo === "1T" ? "bg-nv-light text-white" : "text-dk-4"
+              }`}
+            >
+              1T
+            </button>
+            <button
+              onClick={() => setPeriodo("2T")}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
+                periodo === "2T" ? "bg-nv-light text-white" : "text-dk-4"
+              }`}
+            >
+              2T
+            </button>
+          </div>
+
+          {/* Events count */}
           <div className="text-right">
             <span className="text-[10px] text-dk-4 block">Eventos</span>
             <span className="text-lg font-extrabold leading-tight">{realtimeEvents.length}</span>
           </div>
+
           {step !== "modulo" && (
             <button
               onClick={resetFlow}
@@ -119,6 +145,44 @@ export default function CapturaSessionPage({
           </a>
         </div>
       </header>
+
+      {/* Participants bar */}
+      {participants.length > 0 && (
+        <div
+          className="bg-dk-2 border-b border-dk-3 px-4 py-1.5 flex items-center gap-2 cursor-pointer"
+          onClick={() => setShowParticipants(!showParticipants)}
+        >
+          <div className="flex -space-x-1.5">
+            {participants.slice(0, 5).map((p, i) => (
+              <div
+                key={p.id}
+                className="w-5 h-5 rounded-full bg-nv-light border border-dk-3 flex items-center justify-center text-[8px] font-bold"
+                title={p.display_name}
+                style={{ zIndex: 5 - i }}
+              >
+                {p.display_name.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            {participants.length > 5 && (
+              <div className="w-5 h-5 rounded-full bg-dk-3 border border-dk-3 flex items-center justify-center text-[8px] font-bold text-dk-4">
+                +{participants.length - 5}
+              </div>
+            )}
+          </div>
+          <span className="text-[10px] text-dk-4">
+            {participants.length} capturando
+          </span>
+          {showParticipants && (
+            <div className="flex gap-1.5 flex-wrap ml-2">
+              {participants.map((p) => (
+                <span key={p.id} className="text-[9px] bg-dk-3 text-dk-4 px-2 py-0.5 rounded-full">
+                  {p.display_name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main capture area */}
       {step === "modulo" && <ModuleGrid />}
@@ -145,7 +209,7 @@ export default function CapturaSessionPage({
           <span className="font-mono text-[9px] text-dk-4">{sessionCode}</span>
           <span className="inline-flex items-center gap-1 text-[10px] text-gn">
             <span className="w-1.5 h-1.5 rounded-full bg-gn animate-pulse" />
-            En vivo
+            En vivo · {periodo}
           </span>
           <button
             onClick={handleCerrar}
