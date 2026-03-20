@@ -139,6 +139,14 @@ export default function DashboardLayout({
                   <span>{item.label}</span>
                 </a>
               ))}
+              <div className="border-t border-white/10 my-3 mx-4" />
+              <a href="/incidencias" className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-dk-4 hover:text-white hover:bg-white/5">
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-or" />
+                  <span className="text-sm">&#x1F6A8;</span>
+                </span>
+                <span>Incidencias</span>
+              </a>
             </nav>
           </aside>
         </div>

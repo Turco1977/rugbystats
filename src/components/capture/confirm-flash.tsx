@@ -10,6 +10,24 @@ export function ConfirmFlash() {
 
   const moduleConfig = MODULE_CONFIG.find((m) => m.id === selectedModulo);
 
+  // Incidencia confirmation
+  if (selectedModulo === "INCIDENCIA") {
+    const TIPO_ICONS: Record<string, string> = {
+      tarjeta_roja: "\u{1F7E5}",
+      tarjeta_amarilla: "\u{1F7E8}",
+      lesion: "\u{1F3E5}",
+      publico: "\u{1F465}",
+      disciplina: "\u26A0\uFE0F",
+    };
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-or animate-pulse">
+        <span className="text-5xl">{TIPO_ICONS[selectedResultado || ""] || "\u{1F6A8}"}</span>
+        <p className="text-white text-xl font-bold">Incidencia</p>
+        <p className="text-white/50 text-[10px] mt-2">Registrada</p>
+      </div>
+    );
+  }
+
   // Determine color: ATAQUE → green, DEFENSA → red, others by resultado
   let isPositive: boolean;
   if (selectedModulo === "ATAQUE") {

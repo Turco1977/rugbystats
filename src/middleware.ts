@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/director", "/historial", "/jornada", "/line", "/scrum", "/salidas", "/ataque", "/defensa", "/pie"];
+const PROTECTED_ROUTES = ["/director", "/historial", "/jornada", "/incidencias", "/line", "/scrum", "/salidas", "/ataque", "/defensa", "/pie"];
 
 // Routes that require superadmin role
 const ADMIN_ROUTES = ["/director"];
@@ -73,5 +73,6 @@ export const config = {
     "/ataque/:path*",
     "/defensa/:path*",
     "/pie/:path*",
+    "/incidencias/:path*",
   ],
 };

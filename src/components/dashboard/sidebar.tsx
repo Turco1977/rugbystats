@@ -91,6 +91,25 @@ export function Sidebar() {
             {!collapsed && <span>{item.label}</span>}
           </a>
         ))}
+
+        {/* Incidencias */}
+        <div className="border-t border-white/10 my-4 mx-4" />
+        <a
+          href="/incidencias"
+          className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            collapsed ? "justify-center" : ""
+          } ${
+            isActive("/incidencias")
+              ? "text-white bg-white/10"
+              : "text-dk-4 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-or shrink-0" />
+            <span className="text-base">&#x1F6A8;</span>
+          </span>
+          {!collapsed && <span>Incidencias</span>}
+        </a>
       </nav>
 
       {/* Collapse toggle */}

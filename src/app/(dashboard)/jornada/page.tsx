@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MatchCard } from "@/components/dashboard/match-card";
+import { EditMatchModal } from "@/components/dashboard/edit-match-modal";
 import type { Division, PartidoStatus } from "@/lib/types/domain";
 
 interface PartidoRow {
@@ -25,6 +26,7 @@ export default function FixturePage() {
   const [partidos, setPartidos] = useState<PartidoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [divFilter, setDivFilter] = useState<string>("Todos");
+  const [editPartido, setEditPartido] = useState<PartidoRow | null>(null);
 
   const fetchPartidos = useCallback(async () => {
     const supabase = createClient();
@@ -43,6 +45,27 @@ export default function FixturePage() {
   }, []);
 
   useEffect(() => { fetchPartidos(); }, [fetchPartidos]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("¿Eliminar este partido? Se borrarán todos sus eventos.")) return;
+    const supabase = createClient();
+    // Delete eventos first (FK constraint)
+    await supabase.from("eventos").delete().eq("partido_id", id);
+    // Delete sessions
+    await supabase.from("session_participants").delete().in(
+      "session_id",
+      partidos.filter((p) => p.id === id).flatMap((p) => p.sessions?.map(() => "") || [])
+    );
+    await supabase.from("sessions").delete().eq("partido_id", id);
+    // Delete partido
+    await supabase.from("partidos").delete().eq("id", id);
+    fetchPartidos();
+  };
+
+  const handleEdit = (id: string) => {
+    const p = partidos.find((partido) => partido.id === id);
+    if (p) setEditPartido(p);
+  };
 
   // Filter by division
   const filtered = divFilter === "Todos"
@@ -119,7 +142,7 @@ export default function FixturePage() {
         <div className="card text-center py-12">
           <p className="text-2xl mb-2">🏉</p>
           <p className="text-g-4 text-sm font-semibold">No hay partidos</p>
-          <p className="text-g-3 text-xs mt-1">Creá partidos desde Director Rugby.</p>
+          <p className="text-g-3 text-xs mt-1">Crea partidos desde Director Rugby.</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -146,6 +169,8 @@ export default function FixturePage() {
                         puntosVisitante={p.puntos_visitante}
                         status={p.status}
                         sessionCode={activeSession?.code}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
                       />
                     );
                   })}
@@ -155,6 +180,18 @@ export default function FixturePage() {
           })}
         </div>
       )}
+
+      {/* Edit modal */}
+      <EditMatchModal
+        open={!!editPartido}
+        onClose={() => setEditPartido(null)}
+        onUpdated={fetchPartidos}
+        partido={editPartido ? {
+          id: editPartido.id,
+          division: editPartido.division,
+          equipo_visitante: editPartido.equipo_visitante,
+        } : null}
+      />
     </div>
   );
 }

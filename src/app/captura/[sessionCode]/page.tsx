@@ -9,6 +9,7 @@ import { MotivoPicker } from "@/components/capture/motivo-picker";
 import { ResultadoPicker } from "@/components/capture/resultado-picker";
 import { DetallePicker } from "@/components/capture/detalle-picker";
 import { ConfirmFlash } from "@/components/capture/confirm-flash";
+import { IncidenciaForm } from "@/components/capture/incidencia-form";
 import { LiveFeed } from "@/components/capture/live-feed";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { useSessionParticipants } from "@/hooks/use-session-participants";
@@ -190,6 +191,7 @@ export default function CapturaSessionPage({
       {step === "motivo" && <MotivoPicker />}
       {step === "resultado" && <ResultadoPicker />}
       {step === "detalle" && <DetallePicker />}
+      {step === "incidencia" && <IncidenciaForm />}
       {step === "confirm" && <ConfirmFlash />}
 
       {/* Live Feed - below capture area */}

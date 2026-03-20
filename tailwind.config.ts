@@ -40,6 +40,12 @@ const config: Config = {
           DEFAULT: "#8B5CF6",
           bg: "#EDE9FE",
         },
+        or: {
+          DEFAULT: "#F97316",
+          dark: "#C2410C",
+          bg: "#FFF7ED",
+          border: "#FDBA74",
+        },
         g: {
           1: "#F7F8FA",
           2: "#E8ECF1",
