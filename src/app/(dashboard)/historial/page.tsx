@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 import type { Division } from "@/lib/types/domain";
+import { DivisionModuleSummary } from "@/components/dashboard/division-module-summary";
+import { PLANTEL_MAP } from "@/lib/constants/modules";
 
 interface PartidoHistorial {
   id: string;
@@ -296,6 +298,15 @@ export default function HistorialPage() {
 
       {/* Comparador */}
       <Comparador division={selectedDivision} />
+
+      {/* Module summary per division */}
+      <div className="mt-8">
+        <div className="border-t border-g-2 dark:border-dk-3 pt-6">
+          <DivisionModuleSummary
+            plantel={Object.entries(PLANTEL_MAP).find(([, val]) => val.divisions.includes(selectedDivision))?.[0] ?? "A"}
+          />
+        </div>
+      </div>
     </div>
   );
 }
