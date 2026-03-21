@@ -39,10 +39,35 @@ const TIPO_CONFIG: Record<string, { icon: string; label: string; color: string }
 
 const DIV_FILTERS = ["Todos", "M19", "M17", "M16", "M15"] as const;
 
+interface PartidoOption {
+  id: string;
+  division: string;
+  local: string;
+  visitante: string;
+  date: string;
+}
+
+const INCIDENCIA_TYPES: { key: string; label: string; icon: string; fields: string[] }[] = [
+  { key: "tarjeta_roja", label: "Tarjeta Roja", icon: "\u{1F7E5}", fields: ["nombre"] },
+  { key: "tarjeta_amarilla", label: "Tarjeta Amarilla", icon: "\u{1F7E8}", fields: ["nombre"] },
+  { key: "lesion", label: "Lesión", icon: "\u{1F3E5}", fields: ["nombre", "descripcion"] },
+  { key: "publico", label: "Público", icon: "\u{1F465}", fields: ["descripcion"] },
+  { key: "disciplina", label: "Disciplina", icon: "\u26A0\uFE0F", fields: ["descripcion"] },
+];
+
 export default function IncidenciasPage() {
   const [incidencias, setIncidencias] = useState<IncidenciaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [divFilter, setDivFilter] = useState<string>("Todos");
+
+  // New incidencia modal state
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [partidos, setPartidos] = useState<PartidoOption[]>([]);
+  const [selectedPartido, setSelectedPartido] = useState<string>("");
+  const [selectedTipo, setSelectedTipo] = useState<string>("");
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const fetchIncidencias = useCallback(async () => {
     const supabase = createClient();
@@ -64,6 +89,77 @@ export default function IncidenciasPage() {
   }, []);
 
   useEffect(() => { fetchIncidencias(); }, [fetchIncidencias]);
+
+  // Fetch partidos for the new incidencia modal
+  const openNewModal = async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("partidos")
+      .select(`
+        id, division,
+        equipo_local:teams!equipo_local_id(short_name, name),
+        equipo_visitante:teams!equipo_visitante_id(short_name, name),
+        jornadas:jornadas!jornada_id(date)
+      `)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (data) {
+      setPartidos(
+        (data as unknown as Array<{
+          id: string;
+          division: string;
+          equipo_local: { short_name: string; name: string } | null;
+          equipo_visitante: { short_name: string; name: string } | null;
+          jornadas: { date: string } | null;
+        }>).map((p) => ({
+          id: p.id,
+          division: p.division,
+          local: p.equipo_local?.short_name || p.equipo_local?.name || "Local",
+          visitante: p.equipo_visitante?.short_name || p.equipo_visitante?.name || "Visitante",
+          date: p.jornadas?.date || "",
+        }))
+      );
+    }
+    setSelectedPartido("");
+    setSelectedTipo("");
+    setNombre("");
+    setDescripcion("");
+    setShowNewModal(true);
+  };
+
+  const handleNewSubmit = async () => {
+    if (!selectedPartido || !selectedTipo) return;
+    const tipoConfig = INCIDENCIA_TYPES.find((t) => t.key === selectedTipo);
+    if (tipoConfig?.fields.includes("nombre") && !nombre.trim()) return;
+    if (tipoConfig?.fields.includes("descripcion") && !descripcion.trim()) return;
+
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("eventos").insert({
+      partido_id: selectedPartido,
+      modulo: "INCIDENCIA",
+      perspectiva: "propio",
+      numero: 0,
+      data: {
+        motivo: selectedTipo,
+        resultado: selectedTipo,
+        tipo: selectedTipo,
+        nombre: nombre.trim() || null,
+        descripcion: descripcion.trim() || null,
+      },
+      cargado_por: "Director",
+    });
+
+    if (error) {
+      console.error("Error saving incidencia:", error);
+      alert("Error al guardar: " + error.message);
+    } else {
+      setShowNewModal(false);
+      fetchIncidencias();
+    }
+    setSaving(false);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar esta incidencia?")) return;

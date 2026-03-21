@@ -17,12 +17,32 @@ interface PartidoData {
   sessions: { code: string; is_active: boolean }[];
 }
 
+const INC_TYPES: { key: string; label: string; icon: string; fields: string[] }[] = [
+  { key: "tarjeta_roja", label: "Tarjeta Roja", icon: "\u{1F7E5}", fields: ["nombre"] },
+  { key: "tarjeta_amarilla", label: "Tarjeta Amarilla", icon: "\u{1F7E8}", fields: ["nombre"] },
+  { key: "lesion", label: "Lesión", icon: "\u{1F3E5}", fields: ["nombre", "descripcion"] },
+  { key: "publico", label: "Público", icon: "\u{1F465}", fields: ["descripcion"] },
+  { key: "disciplina", label: "Disciplina", icon: "\u26A0\uFE0F", fields: ["descripcion"] },
+];
+
 export default function PartidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [partido, setPartido] = useState<PartidoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const realtimeEvents = useRealtimeEventos(id);
+
+  // Edit score state
+  const [editingScore, setEditingScore] = useState(false);
+  const [editLocal, setEditLocal] = useState(0);
+  const [editVisitante, setEditVisitante] = useState(0);
+
+  // Incidencia state
+  const [showIncForm, setShowIncForm] = useState(false);
+  const [incTipo, setIncTipo] = useState("");
+  const [incNombre, setIncNombre] = useState("");
+  const [incDesc, setIncDesc] = useState("");
+  const [incSaving, setIncSaving] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -50,6 +70,54 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
 
     return () => { supabase.removeChannel(channel); };
   }, [id]);
+
+  const saveScore = async () => {
+    const supabase = createClient();
+    await supabase.from("partidos").update({
+      puntos_local: editLocal,
+      puntos_visitante: editVisitante,
+    }).eq("id", id);
+    setPartido((prev) => prev ? { ...prev, puntos_local: editLocal, puntos_visitante: editVisitante } : prev);
+    setEditingScore(false);
+  };
+
+  const openEditScore = () => {
+    if (partido) {
+      setEditLocal(partido.puntos_local);
+      setEditVisitante(partido.puntos_visitante);
+      setEditingScore(true);
+    }
+  };
+
+  const submitIncidencia = async () => {
+    if (!incTipo) return;
+    const cfg = INC_TYPES.find((t) => t.key === incTipo);
+    if (cfg?.fields.includes("nombre") && !incNombre.trim()) return;
+    if (cfg?.fields.includes("descripcion") && !incDesc.trim()) return;
+
+    setIncSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("eventos").insert({
+      partido_id: id,
+      modulo: "INCIDENCIA",
+      perspectiva: "propio",
+      numero: 0,
+      data: {
+        motivo: incTipo,
+        resultado: incTipo,
+        tipo: incTipo,
+        nombre: incNombre.trim() || null,
+        descripcion: incDesc.trim() || null,
+      },
+      cargado_por: "Director",
+    });
+    if (error) console.error("Error:", error);
+    setIncSaving(false);
+    setShowIncForm(false);
+    setIncTipo("");
+    setIncNombre("");
+    setIncDesc("");
+  };
 
   // Compute stats from realtime events
   const stats: Record<string, { propio: number; rival: number }> = {};
@@ -205,13 +273,119 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         </div>
 
         <div className="text-center">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl font-extrabold text-nv">{partido.puntos_local}</span>
-            <span className="text-g-3">—</span>
-            <span className="text-3xl font-extrabold text-nv">{partido.puntos_visitante}</span>
-          </div>
+          {editingScore ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={editLocal}
+                onChange={(e) => setEditLocal(Number(e.target.value))}
+                className="w-14 text-center text-2xl font-extrabold rounded border border-g-2 dark:border-dk-3 bg-white dark:bg-dk-2 text-nv dark:text-white py-1"
+              />
+              <span className="text-g-3">—</span>
+              <input
+                type="number"
+                value={editVisitante}
+                onChange={(e) => setEditVisitante(Number(e.target.value))}
+                className="w-14 text-center text-2xl font-extrabold rounded border border-g-2 dark:border-dk-3 bg-white dark:bg-dk-2 text-nv dark:text-white py-1"
+              />
+              <div className="flex flex-col gap-1 ml-1">
+                <button onClick={saveScore} className="text-[10px] font-bold bg-gn text-white px-2 py-0.5 rounded hover:bg-gn-dark">✓</button>
+                <button onClick={() => setEditingScore(false)} className="text-[10px] font-bold bg-g-2 dark:bg-dk-3 text-g-4 px-2 py-0.5 rounded hover:bg-g-3">✗</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-extrabold text-nv dark:text-white">{partido.puntos_local}</span>
+                <span className="text-g-3">—</span>
+                <span className="text-3xl font-extrabold text-nv dark:text-white">{partido.puntos_visitante}</span>
+              </div>
+              <button
+                onClick={openEditScore}
+                className="text-[10px] text-g-4 hover:text-nv dark:hover:text-white mt-1"
+                title="Editar score"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Action buttons for finished matches */}
+      {partido.status === "finished" && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => { setShowIncForm(!showIncForm); setIncTipo(""); }}
+            className="text-xs font-bold px-4 py-2 rounded-md bg-or text-white hover:opacity-90 transition-colors"
+          >
+            🚨 + Incidencia
+          </button>
+        </div>
+      )}
+
+      {/* Inline incidencia form */}
+      {showIncForm && (
+        <div className="card mb-4 border-or/40">
+          <h3 className="text-sm font-bold text-nv dark:text-white mb-3">Nueva Incidencia</h3>
+          {!incTipo ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {INC_TYPES.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setIncTipo(t.key)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-dk-2 border border-dk-3 hover:bg-dk-3 transition-colors text-left"
+                >
+                  <span className="text-lg">{t.icon}</span>
+                  <span className="text-xs font-bold text-white">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={() => setIncTipo("")} className="text-dk-4 hover:text-white text-sm">←</button>
+                <span className="text-lg">{INC_TYPES.find((t) => t.key === incTipo)?.icon}</span>
+                <span className="text-sm font-bold text-white">{INC_TYPES.find((t) => t.key === incTipo)?.label}</span>
+              </div>
+              {INC_TYPES.find((t) => t.key === incTipo)?.fields.includes("nombre") && (
+                <input
+                  type="text"
+                  value={incNombre}
+                  onChange={(e) => setIncNombre(e.target.value)}
+                  placeholder="Nombre del jugador"
+                  autoFocus
+                  className="w-full rounded border border-dk-3 bg-dk-2 px-3 py-2 text-sm text-white placeholder:text-dk-4 focus:border-bl focus:outline-none"
+                />
+              )}
+              {INC_TYPES.find((t) => t.key === incTipo)?.fields.includes("descripcion") && (
+                <textarea
+                  value={incDesc}
+                  onChange={(e) => setIncDesc(e.target.value)}
+                  placeholder={incTipo === "lesion" ? "Tipo de lesión" : "Descripción"}
+                  rows={2}
+                  className="w-full rounded border border-dk-3 bg-dk-2 px-3 py-2 text-sm text-white placeholder:text-dk-4 focus:border-bl focus:outline-none resize-none"
+                />
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={submitIncidencia}
+                  disabled={incSaving}
+                  className="text-xs font-bold px-4 py-2 rounded-md bg-or text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  {incSaving ? "Guardando..." : "Guardar"}
+                </button>
+                <button
+                  onClick={() => setShowIncForm(false)}
+                  className="text-xs font-bold px-4 py-2 rounded-md bg-dk-2 border border-dk-3 text-g-4 hover:text-white"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {activeSession?.code && (
         <div className="flex items-center gap-2 mb-4 p-2.5 bg-dk-2 rounded border border-dk-3">

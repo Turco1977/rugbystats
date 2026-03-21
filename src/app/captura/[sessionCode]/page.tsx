@@ -35,7 +35,13 @@ export default function CapturaSessionPage({
   const [joining, setJoining] = useState(true);
   const [error, setError] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [periodo, setPeriodo] = useState<"1T" | "2T">("1T");
+  const [periodo, setPeriodo] = useState<"1T" | "2T">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`periodo-${sessionCode}`);
+      if (saved === "2T") return "2T";
+    }
+    return "1T";
+  });
   const [showParticipants, setShowParticipants] = useState(false);
   const partidoId = useCaptureStore((s) => s.partidoId);
   const realtimeEvents = useRealtimeEventos(partidoId);
@@ -107,7 +113,7 @@ export default function CapturaSessionPage({
           {/* Period toggle */}
           <div className="flex bg-dk-2 rounded-full p-0.5">
             <button
-              onClick={() => setPeriodo("1T")}
+              onClick={() => { setPeriodo("1T"); localStorage.setItem(`periodo-${sessionCode}`, "1T"); }}
               className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
                 periodo === "1T" ? "bg-nv-light text-white" : "text-dk-4"
               }`}
@@ -115,7 +121,7 @@ export default function CapturaSessionPage({
               1T
             </button>
             <button
-              onClick={() => setPeriodo("2T")}
+              onClick={() => { setPeriodo("2T"); localStorage.setItem(`periodo-${sessionCode}`, "2T"); }}
               className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
                 periodo === "2T" ? "bg-nv-light text-white" : "text-dk-4"
               }`}
