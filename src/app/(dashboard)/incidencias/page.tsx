@@ -7,7 +7,9 @@ interface IncidenciaRow {
   id: string;
   partido_id: string;
   data: {
-    tipo: string;
+    tipo?: string;
+    motivo?: string;
+    resultado?: string;
     nombre?: string;
     descripcion?: string;
   };
@@ -20,6 +22,11 @@ interface IncidenciaRow {
     equipo_visitante: { name: string; short_name: string } | null;
     jornadas: { date: string; name: string } | null;
   } | null;
+}
+
+// Helper to extract tipo from data (supports both old and new format)
+function getTipo(data: IncidenciaRow["data"]): string {
+  return data.tipo || data.motivo || "desconocido";
 }
 
 const TIPO_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
@@ -116,13 +123,13 @@ export default function IncidenciasPage() {
 
       for (const item of items) {
         const d = item.data;
-        const cfg = TIPO_CONFIG[d.tipo];
+        const cfg = TIPO_CONFIG[getTipo(d)];
         const icon = cfg?.icon || "\u{1F6A8}";
-        const label = cfg?.label || d.tipo;
+        const label = cfg?.label || getTipo(d);
 
-        if (d.tipo === "tarjeta_roja" || d.tipo === "tarjeta_amarilla") {
+        if (getTipo(d) === "tarjeta_roja" || getTipo(d) === "tarjeta_amarilla") {
           text += `  ${icon} ${label}: ${d.nombre || "—"}\n`;
-        } else if (d.tipo === "lesion") {
+        } else if (getTipo(d) === "lesion") {
           text += `  ${icon} ${d.nombre || "—"}: ${d.descripcion || "—"}\n`;
         } else {
           text += `  ${icon} ${label}: ${d.descripcion || "—"}\n`;
@@ -154,10 +161,10 @@ export default function IncidenciasPage() {
   };
 
   // Counts
-  const tarjetasRojas = filtered.filter((i) => i.data.tipo === "tarjeta_roja").length;
-  const tarjetasAmarillas = filtered.filter((i) => i.data.tipo === "tarjeta_amarilla").length;
-  const lesiones = filtered.filter((i) => i.data.tipo === "lesion").length;
-  const disciplinaCount = filtered.filter((i) => i.data.tipo === "disciplina" || i.data.tipo === "publico").length;
+  const tarjetasRojas = filtered.filter((i) => getTipo(i.data) === "tarjeta_roja").length;
+  const tarjetasAmarillas = filtered.filter((i) => getTipo(i.data) === "tarjeta_amarilla").length;
+  const lesiones = filtered.filter((i) => getTipo(i.data) === "lesion").length;
+  const disciplinaCount = filtered.filter((i) => getTipo(i.data) === "disciplina" || getTipo(i.data) === "publico").length;
 
   return (
     <div>
@@ -251,7 +258,7 @@ export default function IncidenciasPage() {
                 </h3>
                 <div className="space-y-2">
                   {items.map((inc) => {
-                    const cfg = TIPO_CONFIG[inc.data.tipo] || { icon: "\u{1F6A8}", label: inc.data.tipo, color: "bg-dk-2 border-dk-3 text-dk-4" };
+                    const cfg = TIPO_CONFIG[getTipo(inc.data)] || { icon: "\u{1F6A8}", label: getTipo(inc.data), color: "bg-dk-2 border-dk-3 text-dk-4" };
                     const rival = inc.partidos?.equipo_visitante?.short_name || inc.partidos?.equipo_visitante?.name || "—";
                     const division = inc.partidos?.division || "—";
 

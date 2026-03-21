@@ -389,6 +389,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
           perspectiva: "propio",
           numero: currentCount,
           data: {
+            motivo: incData.tipo,
+            resultado: incData.tipo,
             tipo: incData.tipo,
             nombre: incData.nombre || null,
             descripcion: incData.descripcion || null,
@@ -396,7 +398,9 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
           cargado_por: state.displayName || "Anónimo",
         })
         .then(({ error }) => {
-          if (!error) {
+          if (error) {
+            console.error("Error saving incidencia:", error);
+          } else {
             set((s) => ({
               events: s.events.map((e) =>
                 e.id === event.id ? { ...e, synced: true } : e
