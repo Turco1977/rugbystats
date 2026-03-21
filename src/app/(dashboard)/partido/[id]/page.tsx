@@ -370,8 +370,12 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
               <div className="flex gap-2">
                 <button
                   onClick={submitIncidencia}
-                  disabled={incSaving}
-                  className="text-xs font-bold px-4 py-2 rounded-md bg-or text-white hover:opacity-90 disabled:opacity-40"
+                  disabled={
+                    incSaving ||
+                    (INC_TYPES.find((t) => t.key === incTipo)?.fields.includes("nombre") && !incNombre.trim()) ||
+                    (INC_TYPES.find((t) => t.key === incTipo)?.fields.includes("descripcion") && !incDesc.trim())
+                  }
+                  className="text-xs font-bold px-4 py-2 rounded-md bg-or text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {incSaving ? "Guardando..." : "Guardar"}
                 </button>
