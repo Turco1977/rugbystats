@@ -61,6 +61,11 @@ function generateDemoStats(moduleConfig: (typeof MODULE_CONFIG)[0]): AggregatedS
     roboCount: moduleConfig.hasRobo ? Math.floor(Math.random() * 5) + 1 : 0,
     recuperoCount: moduleConfig.hasRecupero ? Math.floor(Math.random() * 4) + 1 : 0,
     perMatchStats,
+    bestMatch: perMatchStats[0] || null,
+    worstMatch: perMatchStats[perMatchStats.length - 1] || null,
+    last3Effectiveness: effectiveness,
+    trend: "stable" as const,
+    moduleSpecific: {},
   };
 }
 

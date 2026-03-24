@@ -22,7 +22,8 @@ export type ModuloType =
   | "SALIDA"
   | "ATAQUE"
   | "DEFENSA"
-  | "PIE";
+  | "PIE"
+  | "INCIDENCIA";
 
 // LINE motives
 export type LineMotive = "T" | "E" | "I" | "P" | "M"; // Tiro / Ejecución / Infracción / Perfecto / Mérito

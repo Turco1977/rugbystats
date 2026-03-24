@@ -64,6 +64,12 @@ interface CaptureState {
   setSession: (code: string, name: string) => void;
   joinSessionByCode: (code: string, name: string) => Promise<boolean>;
   cerrarPartido: () => Promise<void>;
+  openIncidencia: () => void;
+  submitIncidencia: (data: {
+    tipo: string;
+    nombre?: string;
+    descripcion?: string;
+  }) => void;
 
   // New timer/half actions
   iniciarPartido: () => Promise<void>;
@@ -330,6 +336,72 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
 
   setSession: (code, name) =>
     set({ sessionCode: code, displayName: name }),
+
+  openIncidencia: () => {
+    set({ step: "incidencia", selectedModulo: "INCIDENCIA" as ModuloType });
+  },
+
+  submitIncidencia: (incData) => {
+    const state = get();
+    const counterKey = "INCIDENCIA_propio";
+    const currentCount = (state.counters[counterKey] || 0) + 1;
+
+    const event: QueuedEvent = {
+      id: crypto.randomUUID(),
+      modulo: "INCIDENCIA" as ModuloType,
+      perspectiva: "propio",
+      motivo: incData.tipo,
+      resultado: incData.nombre || incData.descripcion || incData.tipo,
+      timestamp: new Date().toISOString(),
+      numero: currentCount,
+      cargadoPor: state.displayName || "Anónimo",
+      synced: false,
+      tiempo: state.tiempoActual,
+    };
+
+    set({
+      events: [event, ...state.events],
+      undoStack: [event, ...state.undoStack.slice(0, 9)],
+      counters: { ...state.counters, [counterKey]: currentCount },
+      step: "confirm",
+      selectedResultado: incData.tipo,
+    });
+
+    if (state.partidoId) {
+      const supabase = createClient();
+      supabase
+        .from("eventos")
+        .insert({
+          partido_id: state.partidoId,
+          session_id: state.sessionId,
+          modulo: "INCIDENCIA",
+          perspectiva: "propio",
+          numero: currentCount,
+          data: {
+            motivo: incData.tipo,
+            resultado: incData.tipo,
+            tipo: incData.tipo,
+            nombre: incData.nombre || null,
+            descripcion: incData.descripcion || null,
+          },
+          cargado_por: state.displayName || "Anónimo",
+          tiempo: state.tiempoActual,
+        })
+        .then(({ error }) => {
+          if (!error) {
+            set((s) => ({
+              events: s.events.map((e) =>
+                e.id === event.id ? { ...e, synced: true } : e
+              ),
+            }));
+          }
+        });
+    }
+
+    setTimeout(() => {
+      set({ step: "modulo", selectedModulo: null, selectedPerspectiva: null, selectedMotivo: null, selectedResultado: null });
+    }, 800);
+  },
 
   // ─── Timer & Half Actions ───────────────────────────────────
 
