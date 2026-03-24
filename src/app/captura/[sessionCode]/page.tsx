@@ -109,73 +109,141 @@ export default function CapturaSessionPage({
 
   return (
     <main className="flex min-h-screen flex-col bg-dk-1 text-white">
-      {/* Header */}
-      <header className="flex items-center justify-between bg-nv px-4 py-2.5 shadow-card-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
-            🏉
-          </div>
-          <div>
-            {matchInfo ? (
-              <>
-                <div className="flex items-center gap-2">
+      {/* Header — match info */}
+      <header className="bg-nv px-4 py-2.5 shadow-card-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
+              🏉
+            </div>
+            <div>
+              {matchInfo ? (
+                <>
                   <span className="text-[10px] text-dk-4 uppercase tracking-wider">
                     {matchInfo.division}
                   </span>
-                  {/* Half badge */}
-                  {phase !== "pre_match" && (
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        tiempoActual === "1T"
-                          ? "bg-gn/20 text-gn"
-                          : "bg-bl/20 text-bl"
-                      }`}
-                    >
-                      {tiempoActual}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs font-bold leading-tight">
-                  {matchInfo.local} <span className="text-gn text-lg font-extrabold mx-1">{puntosLocal}</span>
-                  <span className="text-dk-4 text-xs">-</span>
-                  <span className="text-rd text-lg font-extrabold mx-1">{puntosVisitante}</span> {matchInfo.visitante}
-                </p>
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] text-dk-4 uppercase tracking-wider">Sesión</span>
-                <p className="text-sm font-bold leading-tight">{sessionCode}</p>
-              </>
+                  <p className="text-xs font-bold leading-tight">
+                    {matchInfo.local} <span className="text-gn text-lg font-extrabold mx-1">{puntosLocal}</span>
+                    <span className="text-dk-4 text-xs">-</span>
+                    <span className="text-rd text-lg font-extrabold mx-1">{puntosVisitante}</span> {matchInfo.visitante}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] text-dk-4 uppercase tracking-wider">Sesión</span>
+                  <p className="text-sm font-bold leading-tight">{sessionCode}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <span className="text-[10px] text-dk-4 block">Eventos</span>
+              <span className="text-lg font-extrabold leading-tight">{realtimeEvents.length}</span>
+            </div>
+            {step !== "modulo" && (
+              <button
+                onClick={resetFlow}
+                className="bg-dk-2 border border-dk-3 rounded px-2.5 py-1.5 text-[10px] font-semibold text-dk-4 hover:text-white"
+              >
+                ESC
+              </button>
             )}
+            <a
+              href="/"
+              className="bg-rd/80 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-rd transition-colors"
+            >
+              Salir
+            </a>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Timer */}
-          <div className="text-right">
-            <span className="text-[10px] text-dk-4 block">
-              {phase === "halftime" ? "Entretiempo" : "Tiempo"}
-            </span>
-            <MatchTimer startTime={timerStart} endTime={timerEnd} />
+        {/* Control bar — timer + phase button */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
+          {/* Left: phase indicator + timer */}
+          <div className="flex items-center gap-3">
+            {phase === "pre_match" && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-yl font-semibold">
+                <span className="w-2 h-2 rounded-full bg-yl" />
+                Esperando inicio
+              </span>
+            )}
+            {phase === "1t_running" && (
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs text-gn font-bold">
+                  <span className="w-2 h-2 rounded-full bg-gn animate-pulse" />
+                  1T
+                </span>
+                <span className="text-xl font-extrabold text-white tabular-nums">
+                  <MatchTimer startTime={timerStart} endTime={timerEnd} />
+                </span>
+              </div>
+            )}
+            {phase === "halftime" && (
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs text-yl font-bold">
+                  <span className="w-2 h-2 rounded-full bg-yl animate-pulse" />
+                  Entretiempo
+                </span>
+                <span className="text-sm text-dk-4">
+                  1T: <MatchTimer startTime={tiempoInicio1t} endTime={tiempoFin1t} />
+                </span>
+              </div>
+            )}
+            {phase === "2t_running" && (
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs text-bl font-bold">
+                  <span className="w-2 h-2 rounded-full bg-bl animate-pulse" />
+                  2T
+                </span>
+                <span className="text-xl font-extrabold text-white tabular-nums">
+                  <MatchTimer startTime={timerStart} endTime={timerEnd} />
+                </span>
+                <span className="text-[10px] text-dk-4">
+                  1T: <MatchTimer startTime={tiempoInicio1t} endTime={tiempoFin1t} />
+                </span>
+              </div>
+            )}
           </div>
-          <div className="text-right">
-            <span className="text-[10px] text-dk-4 block">Eventos</span>
-            <span className="text-lg font-extrabold leading-tight">{realtimeEvents.length}</span>
-          </div>
-          {step !== "modulo" && (
+
+          {/* Right: action button */}
+          {phase === "pre_match" && (
             <button
-              onClick={resetFlow}
-              className="bg-dk-2 border border-dk-3 rounded px-2.5 py-1.5 text-[10px] font-semibold text-dk-4 hover:text-white"
+              onClick={handleIniciar}
+              disabled={actionLoading}
+              className="bg-gn text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-gn/90 transition-colors disabled:opacity-50 shadow-lg"
             >
-              ESC
+              {actionLoading ? "Iniciando..." : "▶ Iniciar Partido"}
             </button>
           )}
-          <a
-            href="/"
-            className="bg-rd/80 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-rd transition-colors"
-          >
-            Salir
-          </a>
+          {phase === "1t_running" && (
+            <button
+              onClick={handleCerrar1T}
+              disabled={actionLoading}
+              className="bg-yl text-dk-1 text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-yl/90 transition-colors disabled:opacity-50 shadow-lg"
+            >
+              {actionLoading ? "..." : "⏸ Cerrar 1T"}
+            </button>
+          )}
+          {phase === "halftime" && (
+            <button
+              onClick={handleIniciar2T}
+              disabled={actionLoading}
+              className="bg-bl text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-bl/90 transition-colors disabled:opacity-50 shadow-lg"
+            >
+              {actionLoading ? "Iniciando..." : "▶ Iniciar 2T"}
+            </button>
+          )}
+          {phase === "2t_running" && (
+            <button
+              onClick={handleCerrar}
+              disabled={actionLoading}
+              className="bg-rd text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-rd/90 transition-colors disabled:opacity-50 shadow-lg"
+            >
+              {actionLoading ? "Cerrando..." : "⏹ Cerrar Partido"}
+            </button>
+          )}
         </div>
       </header>
 
@@ -190,8 +258,8 @@ export default function CapturaSessionPage({
       {/* Live Feed - below capture area */}
       <LiveFeed />
 
-      {/* Footer */}
-      <footer className="flex items-center justify-between border-t border-dk-3 px-4 py-2.5 bg-nv">
+      {/* Footer — minimal */}
+      <footer className="flex items-center justify-between border-t border-dk-3 px-4 py-2 bg-nv">
         <button
           onClick={undoLast}
           disabled={undoStack.length === 0}
@@ -200,74 +268,7 @@ export default function CapturaSessionPage({
         >
           ↩ Deshacer
         </button>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[9px] text-dk-4">{sessionCode}</span>
-
-          {/* Contextual status + action button */}
-          {phase === "pre_match" && (
-            <>
-              <span className="inline-flex items-center gap-1 text-[10px] text-yl">
-                <span className="w-1.5 h-1.5 rounded-full bg-yl" />
-                Esperando
-              </span>
-              <button
-                onClick={handleIniciar}
-                disabled={actionLoading}
-                className="bg-gn/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-gn transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? "..." : "▶ Iniciar Partido"}
-              </button>
-            </>
-          )}
-
-          {phase === "1t_running" && (
-            <>
-              <span className="inline-flex items-center gap-1 text-[10px] text-gn">
-                <span className="w-1.5 h-1.5 rounded-full bg-gn animate-pulse" />
-                1T En vivo
-              </span>
-              <button
-                onClick={handleCerrar1T}
-                disabled={actionLoading}
-                className="bg-yl/80 text-dk-1 text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-yl transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? "..." : "⏸ Cerrar 1T"}
-              </button>
-            </>
-          )}
-
-          {phase === "halftime" && (
-            <>
-              <span className="inline-flex items-center gap-1 text-[10px] text-yl">
-                <span className="w-1.5 h-1.5 rounded-full bg-yl animate-pulse" />
-                Entretiempo
-              </span>
-              <button
-                onClick={handleIniciar2T}
-                disabled={actionLoading}
-                className="bg-bl/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-bl transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? "..." : "▶ Iniciar 2T"}
-              </button>
-            </>
-          )}
-
-          {phase === "2t_running" && (
-            <>
-              <span className="inline-flex items-center gap-1 text-[10px] text-bl">
-                <span className="w-1.5 h-1.5 rounded-full bg-bl animate-pulse" />
-                2T En vivo
-              </span>
-              <button
-                onClick={handleCerrar}
-                disabled={actionLoading}
-                className="bg-rd/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-rd transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? "Cerrando..." : "⏹ Cerrar Partido"}
-              </button>
-            </>
-          )}
-        </div>
+        <span className="font-mono text-[9px] text-dk-4">{sessionCode}</span>
       </footer>
     </main>
   );
