@@ -4,12 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 import type { Division } from "@/lib/types/domain";
-import { DivisionModuleSummary } from "@/components/dashboard/division-module-summary";
-import { PLANTEL_MAP } from "@/lib/constants/modules";
 
 interface PartidoHistorial {
   id: string;
   division: Division;
+  rama: string;
   puntos_local: number;
   puntos_visitante: number;
   status: string;
@@ -46,7 +45,7 @@ export default function HistorialPage() {
       let query = supabase
         .from("partidos")
         .select(`
-          id, division, puntos_local, puntos_visitante, status, created_at,
+          id, division, rama, puntos_local, puntos_visitante, status, created_at,
           equipo_local:teams!equipo_local_id(name, short_name),
           equipo_visitante:teams!equipo_visitante_id(name, short_name),
           jornada:jornadas!jornada_id(name, date)
@@ -54,10 +53,9 @@ export default function HistorialPage() {
         .eq("status", "finished")
         .order("created_at", { ascending: false });
 
-      if (selectedRama === "Todos") {
-        query = query.like("division", `${selectedDivision}%`);
-      } else {
-        query = query.eq("division", `${selectedDivision}${selectedRama}`);
+      query = query.eq("division", selectedDivision);
+      if (selectedRama !== "Todos") {
+        query = query.eq("rama", selectedRama);
       }
 
       const { data } = await query;
@@ -229,7 +227,7 @@ export default function HistorialPage() {
                 return (
                   <tr key={p.id} className="border-t border-dk-3 hover:bg-dk-2 transition-colors">
                     <td className="py-2.5 px-3">
-                      <span className="text-xs font-bold text-nv dark:text-white">{p.division}</span>
+                      <span className="text-xs font-bold text-nv dark:text-white">{p.division} {p.rama || ""}</span>
                     </td>
                     <td className="py-2.5 px-3 text-xs font-semibold text-g-5 dark:text-dk-4">{rival}</td>
                     <td className="py-2.5 px-3 text-center">
@@ -298,15 +296,6 @@ export default function HistorialPage() {
 
       {/* Comparador */}
       <Comparador division={selectedDivision} />
-
-      {/* Module summary per division */}
-      <div className="mt-8">
-        <div className="border-t border-g-2 dark:border-dk-3 pt-6">
-          <DivisionModuleSummary
-            plantel={Object.entries(PLANTEL_MAP).find(([, val]) => val.divisions.includes(selectedDivision))?.[0] ?? "A"}
-          />
-        </div>
-      </div>
     </div>
   );
 }
@@ -324,12 +313,12 @@ function Comparador({ division }: { division: string }) {
 
   const fetchRamaStats = useCallback(async (rama: string) => {
     const supabase = createClient();
-    const divKey = `${division}${rama}`;
 
     const { data: partidos } = await supabase
       .from("partidos")
       .select("id, puntos_local, puntos_visitante")
-      .eq("division", divKey)
+      .eq("division", division)
+      .eq("rama", rama)
       .eq("status", "finished");
 
     const matches = partidos || [];

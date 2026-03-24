@@ -13,6 +13,8 @@ export type SessionRole = "director" | "cargador" | "viewer";
 
 export type Perspectiva = "propio" | "rival";
 
+export type Tiempo = "1T" | "2T";
+
 // Module types
 export type ModuloType =
   | "LINE"
@@ -20,8 +22,7 @@ export type ModuloType =
   | "SALIDA"
   | "ATAQUE"
   | "DEFENSA"
-  | "PIE"
-  | "INCIDENCIA";
+  | "PIE";
 
 // LINE motives
 export type LineMotive = "T" | "E" | "I" | "P" | "M"; // Tiro / Ejecución / Infracción / Perfecto / Mérito
@@ -59,6 +60,7 @@ export interface Partido {
   id: string;
   jornadaId: string;
   division: Division;
+  rama: string; // A, B, or C
   equipoLocal: string;
   equipoVisitante: string;
   cancha?: string;
@@ -67,6 +69,11 @@ export interface Partido {
   puntosLocal: number;
   puntosVisitante: number;
   sessionCode?: string; // 6-digit code for collaborative session
+  tiempoActual: Tiempo;
+  tiempoInicio1t?: string;
+  tiempoFin1t?: string;
+  tiempoInicio2t?: string;
+  tiempoFin2t?: string;
   createdAt: string;
 }
 

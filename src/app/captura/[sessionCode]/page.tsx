@@ -9,10 +9,9 @@ import { MotivoPicker } from "@/components/capture/motivo-picker";
 import { ResultadoPicker } from "@/components/capture/resultado-picker";
 import { DetallePicker } from "@/components/capture/detalle-picker";
 import { ConfirmFlash } from "@/components/capture/confirm-flash";
-import { IncidenciaForm } from "@/components/capture/incidencia-form";
 import { LiveFeed } from "@/components/capture/live-feed";
+import { MatchTimer } from "@/components/capture/match-timer";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
-import { useSessionParticipants } from "@/hooks/use-session-participants";
 
 export default function CapturaSessionPage({
   params,
@@ -30,26 +29,54 @@ export default function CapturaSessionPage({
   const puntosLocal = useCaptureStore((s) => s.puntosLocal);
   const puntosVisitante = useCaptureStore((s) => s.puntosVisitante);
   const cerrarPartido = useCaptureStore((s) => s.cerrarPartido);
-  const sessionId = useCaptureStore((s) => s.sessionId);
+  const iniciarPartido = useCaptureStore((s) => s.iniciarPartido);
+  const cerrar1T = useCaptureStore((s) => s.cerrar1T);
+  const iniciar2T = useCaptureStore((s) => s.iniciar2T);
+  const matchPhase = useCaptureStore((s) => s.matchPhase);
+  const tiempoActual = useCaptureStore((s) => s.tiempoActual);
+  const tiempoInicio1t = useCaptureStore((s) => s.tiempoInicio1t);
+  const tiempoFin1t = useCaptureStore((s) => s.tiempoFin1t);
+  const tiempoInicio2t = useCaptureStore((s) => s.tiempoInicio2t);
+  const tiempoFin2t = useCaptureStore((s) => s.tiempoFin2t);
 
   const [joining, setJoining] = useState(true);
   const [error, setError] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [periodo, setPeriodo] = useState<"1T" | "2T">(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`periodo-${sessionCode}`);
-      if (saved === "2T") return "2T";
-    }
-    return "1T";
-  });
-  const [showParticipants, setShowParticipants] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const partidoId = useCaptureStore((s) => s.partidoId);
   const realtimeEvents = useRealtimeEventos(partidoId);
-  const participants = useSessionParticipants(sessionId);
+
+  const phase = matchPhase();
+
+  // Current timer props based on phase
+  const timerStart = phase === "2t_running" ? tiempoInicio2t : tiempoInicio1t;
+  const timerEnd = phase === "2t_running" ? tiempoFin2t
+    : phase === "halftime" || phase === "finished" ? tiempoFin1t
+    : null;
+
+  const handleIniciar = async () => {
+    if (!confirm("¿Iniciar partido? Arranca el cronómetro del 1er tiempo.")) return;
+    setActionLoading(true);
+    await iniciarPartido();
+    setActionLoading(false);
+  };
+
+  const handleCerrar1T = async () => {
+    if (!confirm("¿Cerrar 1er tiempo?")) return;
+    setActionLoading(true);
+    await cerrar1T();
+    setActionLoading(false);
+  };
+
+  const handleIniciar2T = async () => {
+    if (!confirm("¿Iniciar 2do tiempo? Arranca el cronómetro.")) return;
+    setActionLoading(true);
+    await iniciar2T();
+    setActionLoading(false);
+  };
 
   const handleCerrar = async () => {
     if (!confirm("¿Cerrar partido? Se marcará como finalizado.")) return;
-    setClosing(true);
+    setActionLoading(true);
     await cerrarPartido();
     window.location.href = "/";
   };
@@ -91,9 +118,23 @@ export default function CapturaSessionPage({
           <div>
             {matchInfo ? (
               <>
-                <span className="text-[10px] text-dk-4 uppercase tracking-wider">
-                  {matchInfo.division}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-dk-4 uppercase tracking-wider">
+                    {matchInfo.division}
+                  </span>
+                  {/* Half badge */}
+                  {phase !== "pre_match" && (
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        tiempoActual === "1T"
+                          ? "bg-gn/20 text-gn"
+                          : "bg-bl/20 text-bl"
+                      }`}
+                    >
+                      {tiempoActual}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs font-bold leading-tight">
                   {matchInfo.local} <span className="text-gn text-lg font-extrabold mx-1">{puntosLocal}</span>
                   <span className="text-dk-4 text-xs">-</span>
@@ -109,33 +150,18 @@ export default function CapturaSessionPage({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Period toggle */}
-          <div className="flex bg-dk-2 rounded-full p-0.5">
-            <button
-              onClick={() => { setPeriodo("1T"); localStorage.setItem(`periodo-${sessionCode}`, "1T"); }}
-              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
-                periodo === "1T" ? "bg-nv-light text-white" : "text-dk-4"
-              }`}
-            >
-              1T
-            </button>
-            <button
-              onClick={() => { setPeriodo("2T"); localStorage.setItem(`periodo-${sessionCode}`, "2T"); }}
-              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${
-                periodo === "2T" ? "bg-nv-light text-white" : "text-dk-4"
-              }`}
-            >
-              2T
-            </button>
+        <div className="flex items-center gap-3">
+          {/* Timer */}
+          <div className="text-right">
+            <span className="text-[10px] text-dk-4 block">
+              {phase === "halftime" ? "Entretiempo" : "Tiempo"}
+            </span>
+            <MatchTimer startTime={timerStart} endTime={timerEnd} />
           </div>
-
-          {/* Events count */}
           <div className="text-right">
             <span className="text-[10px] text-dk-4 block">Eventos</span>
             <span className="text-lg font-extrabold leading-tight">{realtimeEvents.length}</span>
           </div>
-
           {step !== "modulo" && (
             <button
               onClick={resetFlow}
@@ -153,51 +179,12 @@ export default function CapturaSessionPage({
         </div>
       </header>
 
-      {/* Participants bar */}
-      {participants.length > 0 && (
-        <div
-          className="bg-dk-2 border-b border-dk-3 px-4 py-1.5 flex items-center gap-2 cursor-pointer"
-          onClick={() => setShowParticipants(!showParticipants)}
-        >
-          <div className="flex -space-x-1.5">
-            {participants.slice(0, 5).map((p, i) => (
-              <div
-                key={p.id}
-                className="w-5 h-5 rounded-full bg-nv-light border border-dk-3 flex items-center justify-center text-[8px] font-bold"
-                title={p.display_name}
-                style={{ zIndex: 5 - i }}
-              >
-                {p.display_name.charAt(0).toUpperCase()}
-              </div>
-            ))}
-            {participants.length > 5 && (
-              <div className="w-5 h-5 rounded-full bg-dk-3 border border-dk-3 flex items-center justify-center text-[8px] font-bold text-dk-4">
-                +{participants.length - 5}
-              </div>
-            )}
-          </div>
-          <span className="text-[10px] text-dk-4">
-            {participants.length} capturando
-          </span>
-          {showParticipants && (
-            <div className="flex gap-1.5 flex-wrap ml-2">
-              {participants.map((p) => (
-                <span key={p.id} className="text-[9px] bg-dk-3 text-dk-4 px-2 py-0.5 rounded-full">
-                  {p.display_name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Main capture area */}
       {step === "modulo" && <ModuleGrid />}
       {step === "perspectiva" && <PerspectivaPicker />}
       {step === "motivo" && <MotivoPicker />}
       {step === "resultado" && <ResultadoPicker />}
       {step === "detalle" && <DetallePicker />}
-      {step === "incidencia" && <IncidenciaForm />}
       {step === "confirm" && <ConfirmFlash />}
 
       {/* Live Feed - below capture area */}
@@ -215,17 +202,71 @@ export default function CapturaSessionPage({
         </button>
         <div className="flex items-center gap-3">
           <span className="font-mono text-[9px] text-dk-4">{sessionCode}</span>
-          <span className="inline-flex items-center gap-1 text-[10px] text-gn">
-            <span className="w-1.5 h-1.5 rounded-full bg-gn animate-pulse" />
-            En vivo · {periodo}
-          </span>
-          <button
-            onClick={handleCerrar}
-            disabled={closing}
-            className="bg-rd/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-rd transition-colors disabled:opacity-50"
-          >
-            {closing ? "Cerrando..." : "Cerrar Partido"}
-          </button>
+
+          {/* Contextual status + action button */}
+          {phase === "pre_match" && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[10px] text-yl">
+                <span className="w-1.5 h-1.5 rounded-full bg-yl" />
+                Esperando
+              </span>
+              <button
+                onClick={handleIniciar}
+                disabled={actionLoading}
+                className="bg-gn/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-gn transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? "..." : "▶ Iniciar Partido"}
+              </button>
+            </>
+          )}
+
+          {phase === "1t_running" && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[10px] text-gn">
+                <span className="w-1.5 h-1.5 rounded-full bg-gn animate-pulse" />
+                1T En vivo
+              </span>
+              <button
+                onClick={handleCerrar1T}
+                disabled={actionLoading}
+                className="bg-yl/80 text-dk-1 text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-yl transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? "..." : "⏸ Cerrar 1T"}
+              </button>
+            </>
+          )}
+
+          {phase === "halftime" && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[10px] text-yl">
+                <span className="w-1.5 h-1.5 rounded-full bg-yl animate-pulse" />
+                Entretiempo
+              </span>
+              <button
+                onClick={handleIniciar2T}
+                disabled={actionLoading}
+                className="bg-bl/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-bl transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? "..." : "▶ Iniciar 2T"}
+              </button>
+            </>
+          )}
+
+          {phase === "2t_running" && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[10px] text-bl">
+                <span className="w-1.5 h-1.5 rounded-full bg-bl animate-pulse" />
+                2T En vivo
+              </span>
+              <button
+                onClick={handleCerrar}
+                disabled={actionLoading}
+                className="bg-rd/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded hover:bg-rd transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? "Cerrando..." : "⏹ Cerrar Partido"}
+              </button>
+            </>
+          )}
         </div>
       </footer>
     </main>

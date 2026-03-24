@@ -11,6 +11,7 @@ interface FeedEvent {
   numero: number;
   cargadoPor: string;
   timestamp: string;
+  tiempo?: "1T" | "2T";
 }
 
 interface EventFeedProps {
@@ -50,6 +51,13 @@ export function EventFeed({ events }: EventFeedProps) {
           return (
             <div key={ev.id} className="feed-item hover:bg-g-1 transition-colors">
               <span className="font-mono text-g-4 w-16 shrink-0">{time}</span>
+              {ev.tiempo && (
+                <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${
+                  ev.tiempo === "2T" ? "bg-bl/20 text-bl" : "bg-gn/20 text-gn"
+                }`}>
+                  {ev.tiempo}
+                </span>
+              )}
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0
                   ${ev.perspectiva === "propio" ? "bg-gn" : "bg-rd"}`}

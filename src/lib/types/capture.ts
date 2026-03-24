@@ -1,7 +1,7 @@
-import type { ModuloType, Perspectiva } from "./domain";
+import type { ModuloType, Perspectiva, Tiempo } from "./domain";
 
 /** Steps in the capture flow */
-export type CaptureStep = "modulo" | "perspectiva" | "motivo" | "resultado" | "detalle" | "confirm" | "incidencia";
+export type CaptureStep = "modulo" | "perspectiva" | "motivo" | "resultado" | "detalle" | "confirm";
 
 /** Module config for the capture UI */
 export interface ModuleConfig {
@@ -34,4 +34,5 @@ export interface QueuedEvent extends PendingEvent {
   numero: number;
   cargadoPor: string;
   synced: boolean;
+  tiempo: Tiempo;
 }
