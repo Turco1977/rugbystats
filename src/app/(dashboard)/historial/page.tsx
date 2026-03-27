@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
 import { DonutChart } from "@/components/dashboard/donut-chart";
 import { Eficacia22Card } from "@/components/dashboard/eficacia-22-card";
+import { TrendChart } from "@/components/dashboard/trend-chart";
 import type { Division } from "@/lib/types/domain";
 
 interface PartidoHistorial {
@@ -162,6 +163,27 @@ export default function HistorialPage() {
     const motivoDrillResultados: Record<string, number> = {};
     motivoDrillEvents.forEach((ev) => { const r = ev.data?.resultado || "?"; motivoDrillResultados[r] = (motivoDrillResultados[r] || 0) + 1; });
 
+    // Progression by match
+    const matchMap = new Map<string, { fechaNumero: number; rivalName: string; ganados: number; total: number }>();
+    propioEvents.forEach((ev) => {
+      const p = partidos.find((p) => p.id === ev.partido_id);
+      const pid = ev.partido_id;
+      if (!matchMap.has(pid)) {
+        matchMap.set(pid, {
+          fechaNumero: matchMap.size + 1,
+          rivalName: p?.equipo_visitante?.short_name || p?.equipo_visitante?.name || "Rival",
+          ganados: 0, total: 0,
+        });
+      }
+      const m = matchMap.get(pid)!;
+      m.total++;
+      if (isPositiveResult(ev.data?.resultado || "", selectedModule)) m.ganados++;
+    });
+    const perMatchData = Array.from(matchMap.values()).map((m) => ({
+      label: `#${m.fechaNumero} ${m.rivalName}`,
+      value: m.total > 0 ? Math.round((m.ganados / m.total) * 100) : 0,
+    }));
+
     return (
       <div>
         <button onClick={() => setSelectedModule(null)} className="text-xs text-g-4 hover:text-nv mb-4 flex items-center gap-1">
@@ -236,6 +258,13 @@ export default function HistorialPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Progresión por fecha */}
+        {perMatchData.length > 0 && (
+          <div className="mb-6">
+            <TrendChart data={perMatchData} colorClass={mod?.color} />
           </div>
         )}
       </div>

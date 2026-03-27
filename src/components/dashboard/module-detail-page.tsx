@@ -40,7 +40,6 @@ const DIVISIONS = ["M19", "M17", "M16", "M15"];
 
 export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const [selectedDivision, setSelectedDivision] = useState("M19");
-  const [selectedRama, setSelectedRama] = useState("Todos");
   const [eventos, setEventos] = useState<RawEvento[]>([]);
   const [loading, setLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
@@ -79,25 +78,17 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   }, [moduloType, moduleConfig]);
 
   // Reset drills on filter change
-  useEffect(() => { setDrillDown(null); setMotivoDrill(null); }, [selectedDivision, selectedRama]);
+  useEffect(() => { setDrillDown(null); setMotivoDrill(null); }, [selectedDivision]);
 
   if (!moduleConfig) {
     return <p className="text-sm text-rd">Módulo no encontrado: {moduleSlug}</p>;
   }
 
-  // Filter by division and rama
+  // Filter by division only (all ramas combined)
   const filtered = eventos.filter((e) => {
     if (!e.partidos) return false;
-    if (e.partidos.division !== selectedDivision) return false;
-    if (selectedRama !== "Todos" && e.partidos.rama && e.partidos.rama !== selectedRama) return false;
-    return true;
+    return e.partidos.division === selectedDivision;
   });
-
-  // Available ramas
-  const availableRamas = [...new Set(
-    eventos.filter((e) => e.partidos?.division === selectedDivision && e.partidos?.rama)
-      .map((e) => e.partidos!.rama)
-  )].sort();
 
   // Basic stats
   const hasPerspective = moduleConfig.hasPerspective !== false;
@@ -184,7 +175,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
           <div>
             <h2 className="text-lg font-bold text-nv">{moduleConfig.label}</h2>
             <p className="text-[10px] text-g-4">
-              Rendimiento global — {selectedDivision}{selectedRama !== "Todos" ? ` ${selectedRama}` : " (todas las ramas)"}
+              Rendimiento global {selectedDivision} — Sumatoria de todas las ramas
             </p>
           </div>
         </div>
@@ -197,7 +188,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
         {DIVISIONS.map((div) => (
           <button
             key={div}
-            onClick={() => { setSelectedDivision(div); setSelectedRama("Todos"); }}
+            onClick={() => { setSelectedDivision(div); }}
             className={`text-xs font-bold px-4 py-2 rounded-md transition-colors ${
               div === selectedDivision ? "bg-nv text-white" : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
             }`}
@@ -207,28 +198,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
         ))}
       </div>
 
-      {/* Rama tabs */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setSelectedRama("Todos")}
-          className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
-            selectedRama === "Todos" ? "bg-gn text-white" : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
-          }`}
-        >
-          Todas las ramas
-        </button>
-        {(availableRamas.length > 0 ? availableRamas : ["A", "B", "C"]).map((rama) => (
-          <button
-            key={rama}
-            onClick={() => setSelectedRama(rama)}
-            className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
-              selectedRama === rama ? "bg-gn text-white" : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
-            }`}
-          >
-            {selectedDivision} {rama}
-          </button>
-        ))}
-      </div>
+      {/* No rama tabs — modules show ALL ramas combined */}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -236,7 +206,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
         </div>
       ) : totalAll === 0 ? (
         <div className="card text-center py-12">
-          <p className="text-sm text-g-4">Sin datos de {moduleConfig.label} para {selectedDivision}{selectedRama !== "Todos" ? ` ${selectedRama}` : ""}</p>
+          <p className="text-sm text-g-4">Sin datos de {moduleConfig.label} para {selectedDivision}</p>
         </div>
       ) : (
         <>
@@ -395,7 +365,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
           )}
 
           {/* Comparativa entre ramas */}
-          {selectedRama === "Todos" && Object.keys(ramaStats).length > 1 && (
+          {Object.keys(ramaStats).length > 1 && (
             <div className="card mb-6">
               <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-4">
                 Comparativa por Rama — {moduleConfig.label}
