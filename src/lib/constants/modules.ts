@@ -119,7 +119,6 @@ export const MODULE_CONFIG: ModuleConfig[] = [
     motivos: [
       { key: "PEN_FK", label: "P/FK", short: "Penal / Free Kick" },
       { key: "TACTICO", label: "T", short: "Táctico" },
-      { key: "PUNTOS", label: "Puntos", short: "Puntos" },
     ],
     resultados: [
       { key: "eficiente", label: "Eficiente" },
@@ -133,10 +132,6 @@ export const MODULE_CONFIG: ModuleConfig[] = [
       TACTICO: [
         { key: "ganado", label: "Ganado" },
         { key: "perdido", label: "Perdido" },
-      ],
-      PUNTOS: [
-        { key: "50mts", label: "50 mts" },
-        { key: "40mts", label: "40 mts" },
       ],
     },
   },

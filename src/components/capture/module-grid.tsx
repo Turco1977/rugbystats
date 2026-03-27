@@ -7,11 +7,19 @@ export function ModuleGrid() {
   const selectModulo = useCaptureStore((s) => s.selectModulo);
   const openIncidencia = useCaptureStore((s) => s.openIncidencia);
   const counters = useCaptureStore((s) => s.counters);
+  const matchPhase = useCaptureStore((s) => s.matchPhase);
 
+  const phase = matchPhase();
+  const isLocked = phase === "pre_match" || phase === "finished";
   const incCount = counters["INCIDENCIA_propio"] || 0;
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-3">
+      {isLocked && (
+        <div className="text-center text-yl text-xs font-medium py-1">
+          {phase === "pre_match" ? "⚠ Iniciá el partido para cargar eventos" : "Partido finalizado"}
+        </div>
+      )}
       {/* Module grid 2x2 (3 rows) */}
       <div className="grid grid-cols-2 gap-3 flex-1 content-center">
         {MODULE_CONFIG.map((mod) => {
@@ -22,8 +30,9 @@ export function ModuleGrid() {
           return (
             <button
               key={mod.id}
-              onClick={() => selectModulo(mod.id)}
-              className={`capture-btn ${mod.color} ${mod.colorHover} relative`}
+              onClick={() => !isLocked && selectModulo(mod.id)}
+              disabled={isLocked}
+              className={`capture-btn ${mod.color} ${mod.colorHover} relative ${isLocked ? "opacity-40 cursor-not-allowed" : ""}`}
             >
               <span className="text-2xl leading-none">{mod.icon}</span>
               <span className="text-sm font-bold tracking-wide">
@@ -43,8 +52,9 @@ export function ModuleGrid() {
 
       {/* Incidencias button - full width below grid */}
       <button
-        onClick={openIncidencia}
-        className="w-full flex items-center justify-center gap-3 rounded-xl bg-or/90 hover:bg-or
+        onClick={() => !isLocked && openIncidencia()}
+        disabled={isLocked}
+        className={`w-full flex items-center justify-center gap-3 rounded-xl bg-or/90 hover:bg-or ${isLocked ? "opacity-40 cursor-not-allowed" : ""}
                    text-white py-3.5 px-4 transition-colors relative"
       >
         <span className="text-xl">&#x1F6A8;</span>
