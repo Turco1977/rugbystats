@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG } from "@/lib/constants/modules";
-import { EventFeed } from "@/components/dashboard/event-feed";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { MatchTimer } from "@/components/capture/match-timer";
 import { DonutChart } from "@/components/dashboard/donut-chart";
@@ -28,6 +27,15 @@ interface PartidoData {
   sessions: { code: string; is_active: boolean }[];
 }
 
+const POSITIVE_RESULTS = new Set([
+  "obtenido", "obtenida", "puntos", "eficiente", "robado", "recuperada", "ganado",
+]);
+
+function isPositiveResult(resultado: string, modulo: string): boolean {
+  if (modulo === "DEFENSA") return resultado === "recuperada";
+  return POSITIVE_RESULTS.has(resultado);
+}
+
 export default function PartidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [partido, setPartido] = useState<PartidoData | null>(null);
@@ -35,6 +43,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedTiempo, setSelectedTiempo] = useState<TiempoFilter>("all");
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
+  const [motivoDrill, setMotivoDrill] = useState<string | null>(null);
   const realtimeEvents = useRealtimeEventos(id);
 
   useEffect(() => {
@@ -65,31 +74,21 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
     return () => { supabase.removeChannel(channel); };
   }, [id]);
 
-  // Filter events by selected half
+  // Reset drill-downs when changing module
+  useEffect(() => {
+    setDrillDown(null);
+    setMotivoDrill(null);
+  }, [selectedModule]);
+
   const filteredEvents = selectedTiempo === "all"
     ? realtimeEvents
     : realtimeEvents.filter((ev) => (ev.tiempo ?? "1T") === selectedTiempo);
 
-  // Compute stats from filtered events
   const stats: Record<string, { propio: number; rival: number }> = {};
   for (const ev of filteredEvents) {
     if (!stats[ev.modulo]) stats[ev.modulo] = { propio: 0, rival: 0 };
     stats[ev.modulo][ev.perspectiva]++;
   }
-
-  // Map events for feed
-  const mapEvents = (events: typeof realtimeEvents) =>
-    events.map((ev) => ({
-      id: ev.id,
-      modulo: ev.modulo,
-      perspectiva: ev.perspectiva,
-      motivo: (ev.data as Record<string, string>)?.motivo || "",
-      resultado: (ev.data as Record<string, string>)?.resultado || (ev.data as Record<string, string>)?.detalle || "",
-      numero: ev.numero,
-      cargadoPor: ev.cargado_por,
-      timestamp: ev.timestamp,
-      tiempo: ev.tiempo,
-    }));
 
   if (loading) {
     return (
@@ -113,7 +112,6 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const activeSession = partido.sessions?.find((s) => s.is_active);
   const isLive = partido.status === "live";
 
-  // Tiempo filter tabs component
   const TiempoTabs = () => (
     <div className="flex gap-1 mb-4">
       {(["all", "1T", "2T"] as TiempoFilter[]).map((t) => (
@@ -122,9 +120,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
           onClick={() => setSelectedTiempo(t)}
           className={`text-[10px] font-bold px-3 py-1.5 rounded transition-colors ${
             selectedTiempo === t
-              ? t === "1T" ? "bg-gn text-white"
-                : t === "2T" ? "bg-bl text-white"
-                : "bg-nv text-white"
+              ? t === "1T" ? "bg-gn text-white" : t === "2T" ? "bg-bl text-white" : "bg-nv text-white"
               : "bg-dk-2 border border-dk-3 text-g-4 hover:bg-dk-3"
           }`}
         >
@@ -134,11 +130,62 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
     </div>
   );
 
-  // Module detail view
+  // ========== MODULE DETAIL VIEW ==========
   if (selectedModule) {
     const mod = MODULE_CONFIG.find((m) => m.id === selectedModule);
     const moduleEvents = filteredEvents.filter((ev) => ev.modulo === selectedModule);
     const modStats = stats[selectedModule] || { propio: 0, rival: 0 };
+
+    // For modules without perspective (ATAQUE, DEFENSA, PIE), use all events
+    const hasPerspective = mod?.hasPerspective !== false;
+    const propioEvents = hasPerspective
+      ? moduleEvents.filter((ev) => ev.perspectiva === "propio")
+      : moduleEvents;
+
+    const ganados = propioEvents.filter((ev) => {
+      const res = (ev.data as Record<string, string>)?.resultado || "";
+      return isPositiveResult(res, selectedModule);
+    });
+    const perdidos = propioEvents.filter((ev) => !ganados.includes(ev));
+    const ganadosPct = propioEvents.length > 0 ? Math.round((ganados.length / propioEvents.length) * 100) : 0;
+
+    // Drill-down data for effectiveness
+    const drillEvents = drillDown === "ganados" ? ganados : drillDown === "perdidos" ? perdidos : [];
+    const drillMotivos: Record<string, number> = {};
+    drillEvents.forEach((ev) => {
+      const m = (ev.data as Record<string, string>)?.motivo || "?";
+      drillMotivos[m] = (drillMotivos[m] || 0) + 1;
+    });
+
+    // Motivo donut data
+    const GREEN_SHADES = ["#10B981", "#059669", "#34D399", "#065F46", "#6EE7B7"];
+    const RED_SHADES = ["#C8102E", "#F87171", "#DC2626", "#991B1B", "#FCA5A5"];
+    const motivoPositive: Record<string, number> = {};
+    const motivoNegative: Record<string, number> = {};
+    propioEvents.forEach((ev) => {
+      const motivo = (ev.data as Record<string, string>)?.motivo || "?";
+      const resultado = (ev.data as Record<string, string>)?.resultado || "";
+      if (isPositiveResult(resultado, selectedModule)) motivoPositive[motivo] = (motivoPositive[motivo] || 0) + 1;
+      else motivoNegative[motivo] = (motivoNegative[motivo] || 0) + 1;
+    });
+    const motivoSegments: { label: string; value: number; color: string; motivo: string }[] = [];
+    (mod?.motivos || []).forEach((m, i) => {
+      const pos = motivoPositive[m.key] ?? 0;
+      const neg = motivoNegative[m.key] ?? 0;
+      if (pos > 0) motivoSegments.push({ label: `${m.label} ✓`, value: pos, color: GREEN_SHADES[i % GREEN_SHADES.length], motivo: m.key });
+      if (neg > 0) motivoSegments.push({ label: `${m.label} ✗`, value: neg, color: RED_SHADES[i % RED_SHADES.length], motivo: m.key });
+    });
+    const motivoTotal = motivoSegments.reduce((s, seg) => s + seg.value, 0);
+
+    // Motivo drill-down: when clicking a motivo segment, show resultado breakdown
+    const motivoDrillEvents = motivoDrill
+      ? propioEvents.filter((ev) => (ev.data as Record<string, string>)?.motivo === motivoDrill)
+      : [];
+    const motivoDrillResultados: Record<string, number> = {};
+    motivoDrillEvents.forEach((ev) => {
+      const res = (ev.data as Record<string, string>)?.resultado || "?";
+      motivoDrillResultados[res] = (motivoDrillResultados[res] || 0) + 1;
+    });
 
     return (
       <div>
@@ -178,194 +225,157 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         </div>
 
         {/* Donut: Ganados vs Perdidos */}
-        {(() => {
-          const isDefensa = selectedModule === "DEFENSA";
-          const propioEvents = moduleEvents.filter((ev) => isDefensa || ev.perspectiva === "propio");
-          const ganados = propioEvents.filter((ev) => {
-            const res = (ev.data as Record<string, string>)?.resultado || "";
-            if (isDefensa) return res === "recuperada";
-            return ["obtenido", "obtenida", "puntos", "eficiente", "robado", "recuperada", "ganado"].includes(res);
-          });
-          const perdidos = propioEvents.filter((ev) => !ganados.includes(ev));
-          const ganadosPct = propioEvents.length > 0 ? Math.round((ganados.length / propioEvents.length) * 100) : 0;
-
-          const drillEvents = drillDown === "ganados" ? ganados : drillDown === "perdidos" ? perdidos : [];
-          const drillMotivos: Record<string, number> = {};
-          drillEvents.forEach((ev) => {
-            const m = (ev.data as Record<string, string>)?.motivo || "?";
-            drillMotivos[m] = (drillMotivos[m] || 0) + 1;
-          });
-
-          return propioEvents.length > 0 ? (
-            <div className="card mb-6">
-              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-                Efectividad — Tocá para ver detalle
-              </h3>
-              <div className="flex flex-col items-center mb-3">
-                <DonutChart
-                  segments={[
-                    { label: "Ganados", value: ganados.length, color: "#10B981" },
-                    { label: "Perdidos", value: perdidos.length, color: "#C8102E" },
-                  ]}
-                  size={140}
-                  strokeWidth={24}
-                  centerValue={`${ganadosPct}%`}
-                  centerLabel="Efectividad"
-                  onSegmentClick={(seg) => {
-                    const key = seg.label === "Ganados" ? "ganados" : "perdidos";
-                    setDrillDown((prev) => prev === key ? null : key as "ganados" | "perdidos");
-                  }}
-                />
-                <div className="flex gap-4 mt-2">
-                  <button
-                    onClick={() => setDrillDown((p) => p === "ganados" ? null : "ganados")}
-                    className={`flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded ${drillDown === "ganados" ? "bg-gn-bg text-gn-forest" : "text-g-4"}`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-gn" /> Ganados: {ganados.length} ({ganadosPct}%)
-                  </button>
-                  <button
-                    onClick={() => setDrillDown((p) => p === "perdidos" ? null : "perdidos")}
-                    className={`flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded ${drillDown === "perdidos" ? "bg-rd-bg text-rd" : "text-g-4"}`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-rd" /> Perdidos: {perdidos.length} ({100 - ganadosPct}%)
-                  </button>
-                </div>
+        {propioEvents.length > 0 && (
+          <div className="card mb-6">
+            <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+              Efectividad — Tocá para ver detalle
+            </h3>
+            <div className="flex flex-col items-center mb-3">
+              <DonutChart
+                segments={[
+                  { label: "Ganados", value: ganados.length, color: "#10B981" },
+                  { label: "Perdidos", value: perdidos.length, color: "#C8102E" },
+                ]}
+                size={160}
+                strokeWidth={28}
+                centerValue={`${ganadosPct}%`}
+                centerLabel="Efectividad"
+                onSegmentClick={(seg) => {
+                  const key = seg.label === "Ganados" ? "ganados" : "perdidos";
+                  setDrillDown((prev) => prev === key ? null : key as "ganados" | "perdidos");
+                }}
+              />
+              <div className="flex gap-4 mt-3">
+                <button
+                  onClick={() => setDrillDown((p) => p === "ganados" ? null : "ganados")}
+                  className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded ${drillDown === "ganados" ? "bg-gn-bg text-gn-forest" : "text-g-4"}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-gn" /> Ganados: {ganados.length} ({ganadosPct}%)
+                </button>
+                <button
+                  onClick={() => setDrillDown((p) => p === "perdidos" ? null : "perdidos")}
+                  className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded ${drillDown === "perdidos" ? "bg-rd-bg text-rd" : "text-g-4"}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-rd" /> Perdidos: {perdidos.length} ({100 - ganadosPct}%)
+                </button>
               </div>
+            </div>
 
-              {/* Drill-down por motivo */}
-              {drillDown && Object.keys(drillMotivos).length > 0 && (
-                <div className="border-t border-g-2 pt-3 mt-2">
-                  <h4 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-                    {drillDown === "ganados" ? "¿Por qué los ganamos?" : "¿Por qué los perdimos?"}
-                  </h4>
-                  <div className="space-y-2">
-                    {Object.entries(drillMotivos)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([motivo, count]) => {
-                        const drillTotal = Object.values(drillMotivos).reduce((s, v) => s + v, 0);
-                        const pct = drillTotal > 0 ? Math.round((count / drillTotal) * 100) : 0;
-                        const mLabel = mod?.motivos.find((m) => m.key === motivo)?.label || motivo;
-                        return (
-                          <div key={motivo}>
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-xs font-semibold text-g-5">{mLabel}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-nv">{count}</span>
-                                <span className="text-[10px] text-g-3">{pct}%</span>
-                              </div>
-                            </div>
-                            <div className="h-2 rounded-full bg-g-1 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${drillDown === "ganados" ? "bg-gn" : "bg-rd"}`}
-                                style={{ width: `${pct}%` }}
-                              />
+            {drillDown && Object.keys(drillMotivos).length > 0 && (
+              <div className="border-t border-g-2 pt-3 mt-2">
+                <h4 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                  {drillDown === "ganados" ? "¿Por qué los ganamos?" : "¿Por qué los perdimos?"}
+                </h4>
+                <div className="space-y-2">
+                  {Object.entries(drillMotivos)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([motivo, count]) => {
+                      const drillTotal = Object.values(drillMotivos).reduce((s, v) => s + v, 0);
+                      const pct = drillTotal > 0 ? Math.round((count / drillTotal) * 100) : 0;
+                      const mLabel = mod?.motivos.find((m) => m.key === motivo)?.label || motivo;
+                      return (
+                        <div key={motivo}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs font-semibold text-g-5">{mLabel}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-nv">{count}</span>
+                              <span className="text-[10px] text-g-3">{pct}%</span>
                             </div>
                           </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null;
-        })()}
-
-        {/* Desglose por motivo con anillo verde/rojo */}
-        {(() => {
-          const isDefensa = selectedModule === "DEFENSA";
-          const propioEvents = moduleEvents.filter((ev) => isDefensa || ev.perspectiva === "propio");
-          const GREEN_SHADES = ["#10B981", "#059669", "#34D399", "#065F46", "#6EE7B7"];
-          const RED_SHADES = ["#C8102E", "#F87171", "#DC2626", "#991B1B", "#FCA5A5"];
-
-          const motivoPositive: Record<string, number> = {};
-          const motivoNegative: Record<string, number> = {};
-
-          propioEvents.forEach((ev) => {
-            const motivo = (ev.data as Record<string, string>)?.motivo || "?";
-            const resultado = (ev.data as Record<string, string>)?.resultado || "";
-            const isPos = isDefensa ? resultado === "recuperada" : ["obtenido", "obtenida", "puntos", "eficiente", "robado", "recuperada", "ganado"].includes(resultado);
-            if (isPos) motivoPositive[motivo] = (motivoPositive[motivo] || 0) + 1;
-            else motivoNegative[motivo] = (motivoNegative[motivo] || 0) + 1;
-          });
-
-          const segments: { label: string; value: number; color: string }[] = [];
-          const allMotivos = mod?.motivos || [];
-          allMotivos.forEach((m, i) => {
-            const pos = motivoPositive[m.key] ?? 0;
-            const neg = motivoNegative[m.key] ?? 0;
-            if (pos > 0) segments.push({ label: `${m.label} ✓`, value: pos, color: GREEN_SHADES[i % GREEN_SHADES.length] });
-            if (neg > 0) segments.push({ label: `${m.label} ✗`, value: neg, color: RED_SHADES[i % RED_SHADES.length] });
-          });
-
-          const total = segments.reduce((s, seg) => s + seg.value, 0);
-          if (total === 0) return null;
-
-          return (
-            <div className="card mb-6">
-              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-                Desglose por Motivo
-              </h3>
-              <div className="flex flex-col items-center">
-                <DonutChart segments={segments} size={180} strokeWidth={30} centerValue={total} centerLabel="eventos" />
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4 w-full">
-                  {segments.map((seg, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                      <span className="text-[10px] text-g-5 font-medium truncate">{seg.label}</span>
-                      <span className="text-[10px] font-bold text-nv ml-auto">{seg.value}</span>
-                      <span className="text-[9px] text-g-3 w-7 text-right">{Math.round((seg.value / total) * 100)}%</span>
-                    </div>
-                  ))}
+                          <div className="h-2 rounded-full bg-g-1 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${drillDown === "ganados" ? "bg-gn" : "bg-rd"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
-            </div>
-          );
-        })()}
+            )}
+          </div>
+        )}
 
-        {/* Breakdown original por motivo */}
-        <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-          Detalle por motivo
-        </h3>
-        <div className="space-y-2 mb-6">
-          {Object.entries(
-            moduleEvents.reduce<Record<string, { count: number; results: Record<string, number> }>>((acc, ev) => {
-              const motivo = (ev.data as Record<string, string>)?.motivo || "—";
-              const resultado = (ev.data as Record<string, string>)?.resultado || "—";
-              if (!acc[motivo]) acc[motivo] = { count: 0, results: {} };
-              acc[motivo].count++;
-              acc[motivo].results[resultado] = (acc[motivo].results[resultado] || 0) + 1;
-              return acc;
-            }, {})
-          ).map(([motivo, data]) => (
-            <div key={motivo} className="card-compact">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-nv uppercase">{motivo}</span>
-                <span className="text-xs font-bold text-g-4">{data.count}</span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {Object.entries(data.results).map(([res, count]) => (
-                  <span key={res} className="text-[10px] bg-dk-2 text-g-4 px-2 py-0.5 rounded">
-                    {res}: {count}
-                  </span>
+        {/* Desglose por motivo — clickeable */}
+        {motivoTotal > 0 && (
+          <div className="card mb-6">
+            <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+              Desglose por Motivo — Tocá para detalle
+            </h3>
+            <div className="flex flex-col items-center">
+              <DonutChart
+                segments={motivoSegments}
+                size={200}
+                strokeWidth={32}
+                centerValue={motivoTotal}
+                centerLabel="eventos"
+                onSegmentClick={(seg) => {
+                  const s = seg as { label: string; value: number; color: string; motivo?: string };
+                  const key = (s as unknown as { motivo: string }).motivo ||
+                    motivoSegments.find((ms) => ms.label === seg.label)?.motivo || null;
+                  setMotivoDrill((prev) => prev === key ? null : key);
+                }}
+              />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4 w-full">
+                {motivoSegments.map((seg, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMotivoDrill((prev) => prev === seg.motivo ? null : seg.motivo)}
+                    className={`flex items-center gap-2 px-1 py-0.5 rounded transition-colors text-left ${
+                      motivoDrill === seg.motivo ? "bg-g-1" : "hover:bg-g-1/50"
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                    <span className="text-[10px] text-g-5 font-medium truncate">{seg.label}</span>
+                    <span className="text-[10px] font-bold text-nv ml-auto">{seg.value}</span>
+                    <span className="text-[9px] text-g-3 w-7 text-right">{Math.round((seg.value / motivoTotal) * 100)}%</span>
+                  </button>
                 ))}
               </div>
             </div>
-          ))}
-          {moduleEvents.length === 0 && (
-            <p className="text-g-3 text-xs text-center py-4">Sin eventos en este módulo</p>
-          )}
-        </div>
 
-        {/* Module events feed */}
-        <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-          Eventos de {mod?.label}
-        </h3>
-        <EventFeed events={mapEvents(moduleEvents)} />
+            {/* Motivo drill-down: resultado breakdown */}
+            {motivoDrill && Object.keys(motivoDrillResultados).length > 0 && (
+              <div className="border-t border-g-2 pt-3 mt-4">
+                <h4 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                  {mod?.motivos.find((m) => m.key === motivoDrill)?.label || motivoDrill} — Detalle por resultado
+                </h4>
+                <div className="space-y-2">
+                  {Object.entries(motivoDrillResultados)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([resultado, count]) => {
+                      const resTotal = Object.values(motivoDrillResultados).reduce((s, v) => s + v, 0);
+                      const pct = resTotal > 0 ? Math.round((count / resTotal) * 100) : 0;
+                      const isPos = isPositiveResult(resultado, selectedModule);
+                      return (
+                        <div key={resultado}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs font-semibold text-g-5 capitalize">{resultado.replace(/_/g, " ")}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-nv">{count}</span>
+                              <span className="text-[10px] text-g-3">{pct}%</span>
+                            </div>
+                          </div>
+                          <div className="h-2 rounded-full bg-g-1 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${isPos ? "bg-gn" : "bg-rd"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
 
-  // Main partido view
+  // ========== MAIN PARTIDO VIEW ==========
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -398,7 +408,6 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
             <span className="text-g-3">—</span>
             <span className="text-3xl font-extrabold text-nv">{partido.puntos_visitante}</span>
           </div>
-          {/* Timer display */}
           {partido.tiempo_inicio_1t && (
             <div className="flex items-center justify-center gap-3 mt-1">
               <div className="text-center">
@@ -429,7 +438,6 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
-      {/* Tiempo filter tabs */}
       <TiempoTabs />
 
       {/* Clickable module cards */}
@@ -455,27 +463,102 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
                     {mod.label}
                   </span>
                 </div>
-                <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-g-1 mb-2">
-                  <div className="bg-gn rounded-l-full transition-all" style={{ width: `${propioPercent}%` }} />
-                  <div className="bg-rd rounded-r-full transition-all" style={{ width: `${100 - propioPercent}%` }} />
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="font-bold text-gn-dark">P: {data.propio}</span>
-                  <span className="font-bold text-rd">R: {data.rival}</span>
-                </div>
+                {total > 0 ? (
+                  <>
+                    <div className="text-center mb-2">
+                      <span className="text-lg font-extrabold text-nv">{total}</span>
+                    </div>
+                    <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-g-1 mb-2">
+                      <div className="bg-gn rounded-l-full transition-all" style={{ width: `${propioPercent}%` }} />
+                      <div className="bg-rd rounded-r-full transition-all" style={{ width: `${100 - propioPercent}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="font-bold text-gn-dark">P: {data.propio}</span>
+                      <span className="font-bold text-rd">R: {data.rival}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[9px] text-g-3 text-center py-2">Sin datos</p>
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Eficacia en 22 */}
+      {/* Eficacia en 22 — bigger */}
       <div className="mb-6">
         <Eficacia22Card eventos={filteredEvents} />
       </div>
 
-      {/* Feed */}
-      <EventFeed events={mapEvents(filteredEvents.slice(0, 30))} />
+      {/* Incidencias */}
+      {(() => {
+        const incidencias = filteredEvents.filter((ev) => ev.modulo === "INCIDENCIA");
+        if (incidencias.length === 0) return null;
+
+        const ICON_MAP: Record<string, string> = {
+          tarjeta_roja: "🟥",
+          tarjeta_amarilla: "🟨",
+          lesion: "🏥",
+          publico: "👥",
+          disciplina: "⚠️",
+        };
+        const COLOR_MAP: Record<string, string> = {
+          tarjeta_roja: "border-rd bg-rd/10",
+          tarjeta_amarilla: "border-yl bg-yl/10",
+          lesion: "border-bl bg-bl-bg",
+          publico: "border-g-3 bg-g-1",
+          disciplina: "border-yl bg-yl/10",
+        };
+
+        return (
+          <div className="mb-6">
+            <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+              Incidencias ({incidencias.length})
+            </h3>
+            <div className="space-y-2">
+              {incidencias.map((ev) => {
+                const data = ev.data as Record<string, string>;
+                const tipo = data?.tipo || data?.motivo || "otro";
+                const nombre = data?.nombre || "";
+                const descripcion = data?.descripcion || data?.resultado || "";
+                const icon = ICON_MAP[tipo] || "📋";
+                const colorClass = COLOR_MAP[tipo] || "border-g-2 bg-g-1";
+                const time = new Date(ev.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+
+                return (
+                  <div key={ev.id} className={`rounded-md border px-4 py-3 ${colorClass}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{icon}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-nv capitalize">
+                            {tipo.replace(/_/g, " ")}
+                          </span>
+                          {nombre && (
+                            <span className="text-xs font-semibold text-g-5">— {nombre}</span>
+                          )}
+                          {ev.tiempo && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              ev.tiempo === "1T" ? "bg-gn/20 text-gn" : "bg-bl/20 text-bl"
+                            }`}>
+                              {ev.tiempo}
+                            </span>
+                          )}
+                        </div>
+                        {descripcion && (
+                          <p className="text-[11px] text-g-4 mt-0.5">{descripcion}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-g-3 flex-shrink-0">{time}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

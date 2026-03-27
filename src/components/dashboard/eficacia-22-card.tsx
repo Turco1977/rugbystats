@@ -13,7 +13,6 @@ interface Eficacia22CardProps {
 }
 
 export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
-  // ATAQUE E22: entradas a sus 22
   const ataqueE22 = eventos.filter(
     (e) => e.modulo === "ATAQUE" && (e.data?.motivo as string) === "E22"
   );
@@ -22,7 +21,6 @@ export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
   const ataqueSinPuntos = ataqueTotal - ataqueConPuntos;
   const ataqueEficacia = ataqueTotal > 0 ? Math.round((ataqueConPuntos / ataqueTotal) * 100) : 0;
 
-  // DEFENSA E22: entradas rivales a nuestras 22
   const defensaE22 = eventos.filter(
     (e) => e.modulo === "DEFENSA" && (e.data?.motivo as string) === "E22"
   );
@@ -35,15 +33,15 @@ export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
 
   return (
     <div className="card">
-      <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-4">
+      <h3 className="text-xs font-bold text-g-4 uppercase tracking-wider mb-5">
         Eficacia en 22
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
         {/* Ataque */}
         <div className="flex flex-col items-center">
-          <p className="text-[10px] font-bold text-gn-dark mb-2">→ Ataque — Entradas a sus 22</p>
+          <p className="text-sm font-bold text-gn-dark mb-3">→ Ataque — Entradas a sus 22</p>
           {ataqueTotal === 0 ? (
-            <p className="text-xs text-g-3 py-4">Sin entradas</p>
+            <p className="text-sm text-g-3 py-6">Sin entradas</p>
           ) : (
             <>
               <DonutChart
@@ -51,24 +49,24 @@ export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
                   { label: "Con puntos", value: ataqueConPuntos, color: "#10B981" },
                   { label: "Sin puntos", value: ataqueSinPuntos, color: "#C8102E" },
                 ]}
-                size={120}
-                strokeWidth={20}
+                size={180}
+                strokeWidth={28}
                 centerValue={`${ataqueEficacia}%`}
                 centerLabel="Conversión"
               />
-              <div className="flex gap-4 mt-2">
-                <span className="text-[10px] font-semibold text-gn-dark">✓ Puntos: {ataqueConPuntos}</span>
-                <span className="text-[10px] font-semibold text-rd">✗ Perdida: {ataqueSinPuntos}</span>
+              <div className="flex gap-6 mt-3">
+                <span className="text-xs font-semibold text-gn-dark">✓ Puntos: {ataqueConPuntos}</span>
+                <span className="text-xs font-semibold text-rd">✗ Perdida: {ataqueSinPuntos}</span>
               </div>
-              <p className="text-[9px] text-g-3 mt-1">{ataqueTotal} entradas a las 22</p>
+              <p className="text-[10px] text-g-3 mt-1">{ataqueTotal} entradas a las 22</p>
             </>
           )}
         </div>
         {/* Defensa */}
         <div className="flex flex-col items-center">
-          <p className="text-[10px] font-bold text-pr mb-2">🛡 Defensa — Entradas rivales a nuestras 22</p>
+          <p className="text-sm font-bold text-pr mb-3">🛡 Defensa — Entradas rivales a nuestras 22</p>
           {defensaTotal === 0 ? (
-            <p className="text-xs text-g-3 py-4">Sin entradas</p>
+            <p className="text-sm text-g-3 py-6">Sin entradas</p>
           ) : (
             <>
               <DonutChart
@@ -76,16 +74,16 @@ export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
                   { label: "Recuperada", value: defensaRecuperada, color: "#10B981" },
                   { label: "Nos marcaron", value: defensaConPuntos, color: "#C8102E" },
                 ]}
-                size={120}
-                strokeWidth={20}
+                size={180}
+                strokeWidth={28}
                 centerValue={`${defensaEficacia}%`}
                 centerLabel="Defensa"
               />
-              <div className="flex gap-4 mt-2">
-                <span className="text-[10px] font-semibold text-gn-dark">✓ Recuperada: {defensaRecuperada}</span>
-                <span className="text-[10px] font-semibold text-rd">✗ Nos marcaron: {defensaConPuntos}</span>
+              <div className="flex gap-6 mt-3">
+                <span className="text-xs font-semibold text-gn-dark">✓ Recuperada: {defensaRecuperada}</span>
+                <span className="text-xs font-semibold text-rd">✗ Nos marcaron: {defensaConPuntos}</span>
               </div>
-              <p className="text-[9px] text-g-3 mt-1">{defensaTotal} entradas a nuestras 22</p>
+              <p className="text-[10px] text-g-3 mt-1">{defensaTotal} entradas a nuestras 22</p>
             </>
           )}
         </div>
