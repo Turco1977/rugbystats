@@ -44,6 +44,13 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const [selectedTiempo, setSelectedTiempo] = useState<TiempoFilter>("all");
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
   const [motivoDrill, setMotivoDrill] = useState<string | null>(null);
+  const [showIncForm, setShowIncForm] = useState(false);
+  const [editingIncId, setEditingIncId] = useState<string | null>(null);
+  const [incTipo, setIncTipo] = useState("");
+  const [incNombre, setIncNombre] = useState("");
+  const [incDesc, setIncDesc] = useState("");
+  const [incTiempo, setIncTiempo] = useState<"1T" | "2T">("1T");
+  const [incSaving, setIncSaving] = useState(false);
   const realtimeEvents = useRealtimeEventos(id);
 
   useEffect(() => {
@@ -495,80 +502,226 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
       {(() => {
         const incidencias = filteredEvents.filter((ev) => ev.modulo === "INCIDENCIA");
 
-        const ICON_MAP: Record<string, string> = {
-          tarjeta_roja: "🟥",
-          tarjeta_amarilla: "🟨",
-          lesion: "🏥",
-          publico: "👥",
-          disciplina: "⚠️",
-        };
-        const COLOR_MAP: Record<string, string> = {
-          tarjeta_roja: "border-rd bg-rd/10",
-          tarjeta_amarilla: "border-yl bg-yl/10",
-          lesion: "border-bl bg-bl-bg",
-          publico: "border-g-3 bg-g-1",
-          disciplina: "border-yl bg-yl/10",
+        const INCIDENCIA_TYPES = [
+          { key: "tarjeta_roja", label: "Tarjeta Roja", icon: "🟥", color: "border-rd bg-rd/10" },
+          { key: "tarjeta_amarilla", label: "Tarjeta Amarilla", icon: "🟨", color: "border-yl bg-yl/10" },
+          { key: "lesion", label: "Lesión", icon: "🏥", color: "border-bl bg-bl-bg" },
+          { key: "publico", label: "Público", icon: "👥", color: "border-g-3 bg-g-1" },
+          { key: "disciplina", label: "Disciplina", icon: "⚠️", color: "border-yl bg-yl/10" },
+        ];
+        const typeMap = Object.fromEntries(INCIDENCIA_TYPES.map((t) => [t.key, t]));
+
+        const resetIncForm = () => {
+          setShowIncForm(false);
+          setEditingIncId(null);
+          setIncTipo("");
+          setIncNombre("");
+          setIncDesc("");
+          setIncTiempo("1T");
         };
 
-        if (incidencias.length === 0) {
-          return (
-            <div className="mb-6">
-              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-                Incidencias
+        const startEdit = (ev: typeof incidencias[0]) => {
+          const data = ev.data as Record<string, string>;
+          setEditingIncId(ev.id);
+          setIncTipo(data?.tipo || data?.motivo || "");
+          setIncNombre(data?.nombre || "");
+          setIncDesc(data?.descripcion || "");
+          setIncTiempo(ev.tiempo || "1T");
+          setShowIncForm(true);
+        };
+
+        const saveIncidencia = async () => {
+          if (!incTipo) return;
+          setIncSaving(true);
+          const supabase = createClient();
+          const incData = {
+            tipo: incTipo,
+            motivo: incTipo,
+            resultado: incDesc || incTipo,
+            ...(incNombre ? { nombre: incNombre } : {}),
+            ...(incDesc ? { descripcion: incDesc } : {}),
+          };
+
+          if (editingIncId) {
+            await supabase
+              .from("eventos")
+              .update({ data: incData, tiempo: incTiempo })
+              .eq("id", editingIncId);
+          } else {
+            // Get next numero
+            const existingCount = incidencias.length;
+            await supabase.from("eventos").insert({
+              partido_id: id,
+              modulo: "INCIDENCIA",
+              perspectiva: "propio",
+              numero: existingCount + 1,
+              data: incData,
+              tiempo: incTiempo,
+              cargado_por: "Post-partido",
+            });
+          }
+          setIncSaving(false);
+          resetIncForm();
+        };
+
+        const deleteIncidencia = async (incId: string) => {
+          const supabase = createClient();
+          await supabase.from("eventos").delete().eq("id", incId);
+        };
+
+        return (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider">
+                Incidencias {incidencias.length > 0 ? `(${incidencias.length})` : ""}
               </h3>
+              {!showIncForm && (
+                <button
+                  onClick={() => { resetIncForm(); setShowIncForm(true); }}
+                  className="text-[10px] font-bold text-bl hover:text-bl-dark flex items-center gap-1"
+                >
+                  + Agregar incidencia
+                </button>
+              )}
+            </div>
+
+            {/* Formulario agregar/editar */}
+            {showIncForm && (
+              <div className="card mb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-[10px] font-bold text-g-4 uppercase">
+                    {editingIncId ? "Editar incidencia" : "Nueva incidencia"}
+                  </h4>
+                  <button onClick={resetIncForm} className="text-[10px] text-g-4 hover:text-nv">✕</button>
+                </div>
+
+                {/* Tipo */}
+                <div className="grid grid-cols-5 gap-1.5 mb-3">
+                  {INCIDENCIA_TYPES.map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setIncTipo(t.key)}
+                      className={`flex flex-col items-center gap-1 py-2 px-1 rounded border text-center transition-all ${
+                        incTipo === t.key
+                          ? "ring-2 ring-nv border-nv"
+                          : "border-g-2 hover:border-g-3"
+                      }`}
+                    >
+                      <span className="text-base">{t.icon}</span>
+                      <span className="text-[8px] font-semibold text-g-5 leading-tight">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Nombre */}
+                <input
+                  type="text"
+                  value={incNombre}
+                  onChange={(e) => setIncNombre(e.target.value)}
+                  placeholder="Nombre del jugador (opcional)"
+                  className="w-full rounded border border-g-2 bg-white px-3 py-2 text-xs text-nv placeholder:text-g-3 mb-2 focus:border-bl focus:outline-none"
+                />
+
+                {/* Descripción */}
+                <textarea
+                  value={incDesc}
+                  onChange={(e) => setIncDesc(e.target.value)}
+                  placeholder="Descripción (ej: Esguince tobillo izquierdo)"
+                  rows={2}
+                  className="w-full rounded border border-g-2 bg-white px-3 py-2 text-xs text-nv placeholder:text-g-3 mb-2 focus:border-bl focus:outline-none resize-none"
+                />
+
+                {/* Tiempo */}
+                <div className="flex gap-2 mb-3">
+                  {(["1T", "2T"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setIncTiempo(t)}
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded ${
+                        incTiempo === t
+                          ? t === "1T" ? "bg-gn text-white" : "bg-bl text-white"
+                          : "bg-g-1 border border-g-2 text-g-4"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Guardar */}
+                <button
+                  onClick={saveIncidencia}
+                  disabled={!incTipo || incSaving}
+                  className="w-full rounded bg-nv text-white text-xs font-bold py-2.5 disabled:opacity-30 hover:bg-nv-light transition-colors"
+                >
+                  {incSaving ? "Guardando..." : editingIncId ? "Guardar cambios" : "Agregar incidencia"}
+                </button>
+              </div>
+            )}
+
+            {/* Lista o vacío */}
+            {incidencias.length === 0 && !showIncForm ? (
               <div className="card text-center py-6">
                 <span className="text-lg">✅</span>
                 <p className="text-sm font-semibold text-gn-dark mt-1">Sin incidencias</p>
               </div>
-            </div>
-          );
-        }
+            ) : (
+              <div className="space-y-2">
+                {incidencias.map((ev) => {
+                  const data = ev.data as Record<string, string>;
+                  const tipo = data?.tipo || data?.motivo || "otro";
+                  const nombre = data?.nombre || "";
+                  const descripcion = data?.descripcion || data?.resultado || "";
+                  const t = typeMap[tipo];
+                  const icon = t?.icon || "📋";
+                  const colorClass = t?.color || "border-g-2 bg-g-1";
+                  const time = new Date(ev.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
-        return (
-          <div className="mb-6">
-            <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-              Incidencias ({incidencias.length})
-            </h3>
-            <div className="space-y-2">
-              {incidencias.map((ev) => {
-                const data = ev.data as Record<string, string>;
-                const tipo = data?.tipo || data?.motivo || "otro";
-                const nombre = data?.nombre || "";
-                const descripcion = data?.descripcion || data?.resultado || "";
-                const icon = ICON_MAP[tipo] || "📋";
-                const colorClass = COLOR_MAP[tipo] || "border-g-2 bg-g-1";
-                const time = new Date(ev.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-
-                return (
-                  <div key={ev.id} className={`rounded-md border px-4 py-3 ${colorClass}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{icon}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-nv capitalize">
-                            {tipo.replace(/_/g, " ")}
-                          </span>
-                          {nombre && (
-                            <span className="text-xs font-semibold text-g-5">— {nombre}</span>
-                          )}
-                          {ev.tiempo && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                              ev.tiempo === "1T" ? "bg-gn/20 text-gn" : "bg-bl/20 text-bl"
-                            }`}>
-                              {ev.tiempo}
+                  return (
+                    <div key={ev.id} className={`rounded-md border px-4 py-3 ${colorClass}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{icon}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-nv capitalize">
+                              {tipo.replace(/_/g, " ")}
                             </span>
+                            {nombre && (
+                              <span className="text-xs font-semibold text-g-5">— {nombre}</span>
+                            )}
+                            {ev.tiempo && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                ev.tiempo === "1T" ? "bg-gn/20 text-gn" : "bg-bl/20 text-bl"
+                              }`}>
+                                {ev.tiempo}
+                              </span>
+                            )}
+                          </div>
+                          {descripcion && descripcion !== tipo && (
+                            <p className="text-[11px] text-g-4 mt-0.5">{descripcion}</p>
                           )}
                         </div>
-                        {descripcion && (
-                          <p className="text-[11px] text-g-4 mt-0.5">{descripcion}</p>
-                        )}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[10px] text-g-3">{time}</span>
+                          <button
+                            onClick={() => startEdit(ev)}
+                            className="text-[10px] text-bl hover:text-bl-dark font-semibold"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => deleteIncidencia(ev.id)}
+                            className="text-[10px] text-rd hover:text-rd-light font-semibold"
+                          >
+                            🗑
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-g-3 flex-shrink-0">{time}</span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}
