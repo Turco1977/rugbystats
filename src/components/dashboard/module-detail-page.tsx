@@ -139,7 +139,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
     const pid = e.partido_id;
     if (!matchMap.has(pid)) {
       matchMap.set(pid, {
-        fechaNumero: e.partidos?.fecha_numero || 0,
+        fechaNumero: e.partidos?.fecha_numero || matchMap.size + 1,
         rivalName: e.partidos?.equipo_visitante?.short_name || e.partidos?.equipo_visitante?.name || "Rival",
         ganados: 0,
         total: 0,

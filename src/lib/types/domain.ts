@@ -23,6 +23,7 @@ export type ModuloType =
   | "ATAQUE"
   | "DEFENSA"
   | "PIE"
+  | "PENALES"
   | "INCIDENCIA";
 
 // LINE motives

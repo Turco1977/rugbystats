@@ -16,6 +16,7 @@ export interface ModuleConfig {
   hasRecupero?: boolean;
   hasPerspective?: boolean;
   motivoResultados?: Record<string, { key: string; label: string }[]>;
+  addPoints?: number;
 }
 
 /** Pending event being built through the capture flow */

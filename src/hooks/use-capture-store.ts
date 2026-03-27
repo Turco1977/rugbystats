@@ -153,11 +153,25 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
       tiempo: state.tiempoActual,
     };
 
+    // Check if module adds points (e.g. PENALES +3)
+    let newLocal = state.puntosLocal;
+    let newVisitante = state.puntosVisitante;
+    const moduleConfig = MODULE_CONFIG.find((m) => m.id === state.selectedModulo);
+    if (moduleConfig?.addPoints) {
+      if (state.selectedPerspectiva === "propio") {
+        newLocal += moduleConfig.addPoints;
+      } else {
+        newVisitante += moduleConfig.addPoints;
+      }
+    }
+
     set({
       selectedResultado: resultado,
       events: [event, ...state.events],
       undoStack: [event, ...state.undoStack.slice(0, 9)],
       counters: { ...state.counters, [counterKey]: currentCount },
+      puntosLocal: newLocal,
+      puntosVisitante: newVisitante,
       step: "confirm",
     });
 
@@ -185,6 +199,15 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
             }));
           }
         });
+
+      // Update score if points changed
+      if (moduleConfig?.addPoints) {
+        supabase
+          .from("partidos")
+          .update({ puntos_local: newLocal, puntos_visitante: newVisitante })
+          .eq("id", state.partidoId)
+          .then(() => {});
+      }
     }
 
     // Auto-reset

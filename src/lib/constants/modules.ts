@@ -140,6 +140,22 @@ export const MODULE_CONFIG: ModuleConfig[] = [
       ],
     },
   },
+  {
+    id: "PENALES",
+    label: "Penales",
+    color: "bg-orange-600",
+    colorHover: "hover:bg-orange-700",
+    icon: "🎯",
+    motivos: [
+      { key: "50MTS", label: "50 mts", short: "50m" },
+      { key: "40MTS", label: "40 mts", short: "40m" },
+    ],
+    resultados: [
+      { key: "penal", label: "Penal" },
+      { key: "drop", label: "Drop" },
+    ],
+    addPoints: 3,
+  },
 ];
 
 /** Sub-options when resultado = "puntos" */
