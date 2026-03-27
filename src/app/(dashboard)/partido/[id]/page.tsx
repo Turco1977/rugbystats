@@ -494,7 +494,6 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
       {/* Incidencias */}
       {(() => {
         const incidencias = filteredEvents.filter((ev) => ev.modulo === "INCIDENCIA");
-        if (incidencias.length === 0) return null;
 
         const ICON_MAP: Record<string, string> = {
           tarjeta_roja: "🟥",
@@ -510,6 +509,20 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
           publico: "border-g-3 bg-g-1",
           disciplina: "border-yl bg-yl/10",
         };
+
+        if (incidencias.length === 0) {
+          return (
+            <div className="mb-6">
+              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                Incidencias
+              </h3>
+              <div className="card text-center py-6">
+                <span className="text-lg">✅</span>
+                <p className="text-sm font-semibold text-gn-dark mt-1">Sin incidencias</p>
+              </div>
+            </div>
+          );
+        }
 
         return (
           <div className="mb-6">
