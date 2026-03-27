@@ -6,6 +6,8 @@ import { MODULE_CONFIG } from "@/lib/constants/modules";
 import { EventFeed } from "@/components/dashboard/event-feed";
 import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { MatchTimer } from "@/components/capture/match-timer";
+import { DonutChart } from "@/components/dashboard/donut-chart";
+import { Eficacia22Card } from "@/components/dashboard/eficacia-22-card";
 
 type TiempoFilter = "all" | "1T" | "2T";
 
@@ -32,6 +34,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedTiempo, setSelectedTiempo] = useState<TiempoFilter>("all");
+  const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
   const realtimeEvents = useRealtimeEventos(id);
 
   useEffect(() => {
@@ -174,9 +177,154 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
 
-        {/* Breakdown by motivo */}
+        {/* Donut: Ganados vs Perdidos */}
+        {(() => {
+          const isDefensa = selectedModule === "DEFENSA";
+          const propioEvents = moduleEvents.filter((ev) => isDefensa || ev.perspectiva === "propio");
+          const ganados = propioEvents.filter((ev) => {
+            const res = (ev.data as Record<string, string>)?.resultado || "";
+            if (isDefensa) return res === "recuperada";
+            return ["obtenido", "obtenida", "puntos", "eficiente", "robado", "recuperada", "ganado"].includes(res);
+          });
+          const perdidos = propioEvents.filter((ev) => !ganados.includes(ev));
+          const ganadosPct = propioEvents.length > 0 ? Math.round((ganados.length / propioEvents.length) * 100) : 0;
+
+          const drillEvents = drillDown === "ganados" ? ganados : drillDown === "perdidos" ? perdidos : [];
+          const drillMotivos: Record<string, number> = {};
+          drillEvents.forEach((ev) => {
+            const m = (ev.data as Record<string, string>)?.motivo || "?";
+            drillMotivos[m] = (drillMotivos[m] || 0) + 1;
+          });
+
+          return propioEvents.length > 0 ? (
+            <div className="card mb-6">
+              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                Efectividad — Tocá para ver detalle
+              </h3>
+              <div className="flex flex-col items-center mb-3">
+                <DonutChart
+                  segments={[
+                    { label: "Ganados", value: ganados.length, color: "#10B981" },
+                    { label: "Perdidos", value: perdidos.length, color: "#C8102E" },
+                  ]}
+                  size={140}
+                  strokeWidth={24}
+                  centerValue={`${ganadosPct}%`}
+                  centerLabel="Efectividad"
+                  onSegmentClick={(seg) => {
+                    const key = seg.label === "Ganados" ? "ganados" : "perdidos";
+                    setDrillDown((prev) => prev === key ? null : key as "ganados" | "perdidos");
+                  }}
+                />
+                <div className="flex gap-4 mt-2">
+                  <button
+                    onClick={() => setDrillDown((p) => p === "ganados" ? null : "ganados")}
+                    className={`flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded ${drillDown === "ganados" ? "bg-gn-bg text-gn-forest" : "text-g-4"}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-gn" /> Ganados: {ganados.length} ({ganadosPct}%)
+                  </button>
+                  <button
+                    onClick={() => setDrillDown((p) => p === "perdidos" ? null : "perdidos")}
+                    className={`flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded ${drillDown === "perdidos" ? "bg-rd-bg text-rd" : "text-g-4"}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rd" /> Perdidos: {perdidos.length} ({100 - ganadosPct}%)
+                  </button>
+                </div>
+              </div>
+
+              {/* Drill-down por motivo */}
+              {drillDown && Object.keys(drillMotivos).length > 0 && (
+                <div className="border-t border-g-2 pt-3 mt-2">
+                  <h4 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                    {drillDown === "ganados" ? "¿Por qué los ganamos?" : "¿Por qué los perdimos?"}
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(drillMotivos)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([motivo, count]) => {
+                        const drillTotal = Object.values(drillMotivos).reduce((s, v) => s + v, 0);
+                        const pct = drillTotal > 0 ? Math.round((count / drillTotal) * 100) : 0;
+                        const mLabel = mod?.motivos.find((m) => m.key === motivo)?.label || motivo;
+                        return (
+                          <div key={motivo}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs font-semibold text-g-5">{mLabel}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-nv">{count}</span>
+                                <span className="text-[10px] text-g-3">{pct}%</span>
+                              </div>
+                            </div>
+                            <div className="h-2 rounded-full bg-g-1 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${drillDown === "ganados" ? "bg-gn" : "bg-rd"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null;
+        })()}
+
+        {/* Desglose por motivo con anillo verde/rojo */}
+        {(() => {
+          const isDefensa = selectedModule === "DEFENSA";
+          const propioEvents = moduleEvents.filter((ev) => isDefensa || ev.perspectiva === "propio");
+          const GREEN_SHADES = ["#10B981", "#059669", "#34D399", "#065F46", "#6EE7B7"];
+          const RED_SHADES = ["#C8102E", "#F87171", "#DC2626", "#991B1B", "#FCA5A5"];
+
+          const motivoPositive: Record<string, number> = {};
+          const motivoNegative: Record<string, number> = {};
+
+          propioEvents.forEach((ev) => {
+            const motivo = (ev.data as Record<string, string>)?.motivo || "?";
+            const resultado = (ev.data as Record<string, string>)?.resultado || "";
+            const isPos = isDefensa ? resultado === "recuperada" : ["obtenido", "obtenida", "puntos", "eficiente", "robado", "recuperada", "ganado"].includes(resultado);
+            if (isPos) motivoPositive[motivo] = (motivoPositive[motivo] || 0) + 1;
+            else motivoNegative[motivo] = (motivoNegative[motivo] || 0) + 1;
+          });
+
+          const segments: { label: string; value: number; color: string }[] = [];
+          const allMotivos = mod?.motivos || [];
+          allMotivos.forEach((m, i) => {
+            const pos = motivoPositive[m.key] ?? 0;
+            const neg = motivoNegative[m.key] ?? 0;
+            if (pos > 0) segments.push({ label: `${m.label} ✓`, value: pos, color: GREEN_SHADES[i % GREEN_SHADES.length] });
+            if (neg > 0) segments.push({ label: `${m.label} ✗`, value: neg, color: RED_SHADES[i % RED_SHADES.length] });
+          });
+
+          const total = segments.reduce((s, seg) => s + seg.value, 0);
+          if (total === 0) return null;
+
+          return (
+            <div className="card mb-6">
+              <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
+                Desglose por Motivo
+              </h3>
+              <div className="flex flex-col items-center">
+                <DonutChart segments={segments} size={180} strokeWidth={30} centerValue={total} centerLabel="eventos" />
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4 w-full">
+                  {segments.map((seg, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                      <span className="text-[10px] text-g-5 font-medium truncate">{seg.label}</span>
+                      <span className="text-[10px] font-bold text-nv ml-auto">{seg.value}</span>
+                      <span className="text-[9px] text-g-3 w-7 text-right">{Math.round((seg.value / total) * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Breakdown original por motivo */}
         <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
-          Desglose por motivo
+          Detalle por motivo
         </h3>
         <div className="space-y-2 mb-6">
           {Object.entries(
@@ -319,6 +467,11 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
             );
           })}
         </div>
+      </div>
+
+      {/* Eficacia en 22 */}
+      <div className="mb-6">
+        <Eficacia22Card eventos={filteredEvents} />
       </div>
 
       {/* Feed */}
