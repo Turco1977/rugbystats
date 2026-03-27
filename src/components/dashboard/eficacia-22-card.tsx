@@ -2,14 +2,14 @@
 
 import { DonutChart } from "./donut-chart";
 
-interface RealtimeEvento {
+interface EventoLike {
   modulo: string;
-  perspectiva: "propio" | "rival";
+  perspectiva: string;
   data: Record<string, unknown>;
 }
 
 interface Eficacia22CardProps {
-  eventos: RealtimeEvento[];
+  eventos: EventoLike[];
 }
 
 export function Eficacia22Card({ eventos }: Eficacia22CardProps) {
