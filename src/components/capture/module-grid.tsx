@@ -10,14 +10,14 @@ export function ModuleGrid() {
   const matchPhase = useCaptureStore((s) => s.matchPhase);
 
   const phase = matchPhase();
-  const isLocked = phase === "pre_match" || phase === "finished";
+  const isLocked = phase === "pre_match" || phase === "halftime" || phase === "finished";
   const incCount = counters["INCIDENCIA_propio"] || 0;
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-3">
       {isLocked && (
         <div className="text-center text-yl text-xs font-medium py-1">
-          {phase === "pre_match" ? "⚠ Iniciá el partido para cargar eventos" : "Partido finalizado"}
+          {phase === "pre_match" ? "⚠ Iniciá el partido para cargar eventos" : phase === "halftime" ? "⚠ Iniciá el 2do tiempo para cargar eventos" : "Partido finalizado"}
         </div>
       )}
       {/* Module grid 2x2 (3 rows) */}
