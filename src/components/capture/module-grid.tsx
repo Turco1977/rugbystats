@@ -54,8 +54,7 @@ export function ModuleGrid() {
       <button
         onClick={() => !isLocked && openIncidencia()}
         disabled={isLocked}
-        className={`w-full flex items-center justify-center gap-3 rounded-xl bg-or/90 hover:bg-or ${isLocked ? "opacity-40 cursor-not-allowed" : ""}
-                   text-white py-3.5 px-4 transition-colors relative"
+        className={`w-full flex items-center justify-center gap-3 rounded-xl bg-or/90 hover:bg-or text-white py-3.5 px-4 transition-colors relative ${isLocked ? "opacity-40 cursor-not-allowed" : ""}`}
       >
         <span className="text-xl">&#x1F6A8;</span>
         <div className="flex flex-col items-start">
