@@ -33,6 +33,7 @@ const POSITIVE_RESULTS = new Set([
 
 function isPositiveResult(resultado: string, modulo: string): boolean {
   if (modulo === "DEFENSA") return resultado === "recuperada";
+  if (modulo === "PENALES") return true; // all propio events are positive (scored)
   return POSITIVE_RESULTS.has(resultado);
 }
 

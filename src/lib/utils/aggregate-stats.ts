@@ -168,7 +168,7 @@ export function aggregateStats(
     // --- Totals ---
     if (perspectiva === "propio") {
       totalPropio++;
-      if (POSITIVE_RESULTADOS.has(resultado)) positiveCount++;
+      if (moduleConfig.id === "PENALES" || POSITIVE_RESULTADOS.has(resultado)) positiveCount++;
     } else {
       totalRival++;
     }
@@ -262,7 +262,7 @@ export function aggregateStats(
     if (perspectiva === "propio") {
       m.propioCount++;
       m.totalPropio++;
-      if (POSITIVE_RESULTADOS.has(resultado)) m.positiveCount++;
+      if (modId === "PENALES" || POSITIVE_RESULTADOS.has(resultado)) m.positiveCount++;
       if (motivo) m.motivoBreakdown[motivo] = (m.motivoBreakdown[motivo] ?? 0) + 1;
     } else {
       m.rivalCount++;

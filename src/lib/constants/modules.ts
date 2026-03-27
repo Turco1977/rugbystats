@@ -200,4 +200,5 @@ export const MODULE_SLUG_MAP: Record<string, string> = {
   ataque: "ATAQUE",
   defensa: "DEFENSA",
   pie: "PIE",
+  penales: "PENALES",
 };
