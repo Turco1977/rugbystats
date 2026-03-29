@@ -7,6 +7,9 @@ import { useRealtimeEventos } from "@/hooks/use-realtime-eventos";
 import { MatchTimer } from "@/components/capture/match-timer";
 import { DonutChart } from "@/components/dashboard/donut-chart";
 import { Eficacia22Card } from "@/components/dashboard/eficacia-22-card";
+import { InformePartido } from "@/components/dashboard/informe-partido";
+
+type ActiveTab = "estadisticas" | "informe";
 
 type TiempoFilter = "all" | "1T" | "2T";
 
@@ -25,6 +28,7 @@ interface PartidoData {
   equipo_local: { name: string; short_name: string } | null;
   equipo_visitante: { name: string; short_name: string } | null;
   sessions: { code: string; is_active: boolean }[];
+  jornada?: { name: string; date: string } | null;
 }
 
 const POSITIVE_RESULTS = new Set([
@@ -43,6 +47,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedTiempo, setSelectedTiempo] = useState<TiempoFilter>("all");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("estadisticas");
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
   const [motivoDrill, setMotivoDrill] = useState<string | null>(null);
   const [showIncForm, setShowIncForm] = useState(false);
@@ -63,7 +68,8 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         tiempo_actual, tiempo_inicio_1t, tiempo_fin_1t, tiempo_inicio_2t, tiempo_fin_2t,
         equipo_local:teams!equipo_local_id(name, short_name),
         equipo_visitante:teams!equipo_visitante_id(name, short_name),
-        sessions(code, is_active)
+        sessions(code, is_active),
+        jornada:jornadas!jornada_id(name, date)
       `)
       .eq("id", id)
       .single()
@@ -446,7 +452,28 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
-      <TiempoTabs />
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 border-b border-dk-3">
+        {(["estadisticas", "informe"] as ActiveTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`text-xs font-bold px-4 py-2 -mb-px border-b-2 transition-colors capitalize ${
+              activeTab === tab
+                ? "border-nv text-nv"
+                : "border-transparent text-g-4 hover:text-g-5"
+            }`}
+          >
+            {tab === "estadisticas" ? "Estadísticas" : "Informe"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "informe" && (
+        <InformePartido partido={partido} eventos={realtimeEvents} />
+      )}
+
+      {activeTab === "estadisticas" && <><TiempoTabs />
 
       {/* Clickable module cards */}
       <div className="mb-6">
@@ -726,6 +753,7 @@ export default function PartidoPage({ params }: { params: Promise<{ id: string }
           </div>
         );
       })()}
+    </>}
     </div>
   );
 }
