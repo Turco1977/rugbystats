@@ -14,6 +14,7 @@ interface MatchCardProps {
   sessionCode?: string;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onCardClick?: (id: string) => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -43,11 +44,24 @@ export function MatchCard({
   sessionCode,
   onEdit,
   onDelete,
+  onCardClick,
 }: MatchCardProps) {
   const statusCfg = STATUS_CONFIG[status];
 
+  const Wrapper = onCardClick
+    ? ({ children, className }: { children: React.ReactNode; className: string }) => (
+        <button onClick={() => onCardClick(id)} className={`${className} text-left w-full`}>
+          {children}
+        </button>
+      )
+    : ({ children, className }: { children: React.ReactNode; className: string }) => (
+        <a href={`/partido/${id}`} className={className}>
+          {children}
+        </a>
+      );
+
   return (
-    <a href={`/partido/${id}`} className="card hover:shadow-card-sm transition-shadow block">
+    <Wrapper className="card hover:shadow-card-sm transition-shadow block">
       {/* Top row: division + status */}
       <div className="flex items-center justify-between mb-3">
         <span className="bg-nv text-white text-[10px] font-bold px-2.5 py-0.5 rounded-sm">
@@ -133,6 +147,6 @@ export function MatchCard({
           )}
         </div>
       )}
-    </a>
+    </Wrapper>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MatchCard } from "@/components/dashboard/match-card";
+import { PartidoDetailEmbed } from "@/components/entrenador/partido-detail-embed";
 import type { Division, PartidoStatus } from "@/lib/types/domain";
 
 interface PartidoRow {
@@ -26,6 +27,7 @@ interface EntrenadorFixtureProps {
 export function EntrenadorFixture({ division }: EntrenadorFixtureProps) {
   const [partidos, setPartidos] = useState<PartidoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPartidoId, setSelectedPartidoId] = useState<string | null>(null);
 
   const fetchPartidos = useCallback(async () => {
     const supabase = createClient();
@@ -52,6 +54,16 @@ export function EntrenadorFixture({ division }: EntrenadorFixtureProps) {
   useEffect(() => {
     fetchPartidos();
   }, [fetchPartidos]);
+
+  // If a partido is selected, show embedded detail
+  if (selectedPartidoId) {
+    return (
+      <PartidoDetailEmbed
+        partidoId={selectedPartidoId}
+        onBack={() => setSelectedPartidoId(null)}
+      />
+    );
+  }
 
   // Group by jornada date
   const grouped = partidos.reduce<Record<string, PartidoRow[]>>((acc, p) => {
@@ -131,6 +143,7 @@ export function EntrenadorFixture({ division }: EntrenadorFixtureProps) {
                         puntosVisitante={p.puntos_visitante}
                         status={p.status}
                         sessionCode={activeSession?.code}
+                        onCardClick={(id) => setSelectedPartidoId(id)}
                       />
                     );
                   })}
