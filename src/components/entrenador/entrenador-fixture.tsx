@@ -29,6 +29,7 @@ export function EntrenadorFixture({ division }: EntrenadorFixtureProps) {
 
   const fetchPartidos = useCallback(async () => {
     const supabase = createClient();
+    // Same query as director's fixture — fetch all, filter client-side
     const { data } = await supabase
       .from("partidos")
       .select(`
@@ -38,9 +39,13 @@ export function EntrenadorFixture({ division }: EntrenadorFixtureProps) {
         sessions(code, is_active),
         jornada:jornadas!jornada_id(id, name, date)
       `)
-      .like("division", `${division}%`)
       .order("created_at", { ascending: false });
-    if (data) setPartidos(data as unknown as PartidoRow[]);
+    if (data) {
+      const filtered = (data as unknown as PartidoRow[]).filter(
+        (p) => p.division === division || p.division.startsWith(division)
+      );
+      setPartidos(filtered);
+    }
     setLoading(false);
   }, [division]);
 
