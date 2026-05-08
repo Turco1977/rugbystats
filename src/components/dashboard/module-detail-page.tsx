@@ -224,17 +224,25 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
               <>
                 <button
                   onClick={() => setSelectedPerspective("propio")}
-                  className={`card-compact text-center transition-all ${selectedPerspective === "propio" ? "ring-2 ring-gn" : "opacity-60 hover:opacity-80"}`}
+                  className="card-compact text-center transition-all"
+                  style={selectedPerspective === "propio" ? { border: "2px solid #10B981" } : { opacity: 0.55 }}
                 >
                   <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
                   <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
+                  {selectedPerspective === "propio" && (
+                    <p className="text-[9px] text-gn mt-0.5">● viendo</p>
+                  )}
                 </button>
                 <button
                   onClick={() => setSelectedPerspective("rival")}
-                  className={`card-compact text-center transition-all ${selectedPerspective === "rival" ? "ring-2 ring-rd" : "opacity-60 hover:opacity-80"}`}
+                  className="card-compact text-center transition-all"
+                  style={selectedPerspective === "rival" ? { border: "2px solid #C8102E" } : { opacity: 0.55 }}
                 >
                   <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
                   <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
+                  {selectedPerspective === "rival" && (
+                    <p className="text-[9px] text-rd mt-0.5">● viendo</p>
+                  )}
                 </button>
               </>
             ) : (
