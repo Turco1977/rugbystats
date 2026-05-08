@@ -40,6 +40,7 @@ const DIVISIONS = ["M19", "M17", "M16", "M15"];
 
 export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const [selectedDivision, setSelectedDivision] = useState("M19");
+  const [selectedPerspective, setSelectedPerspective] = useState<"propio" | "rival">("propio");
   const [eventos, setEventos] = useState<RawEvento[]>([]);
   const [loading, setLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
@@ -78,7 +79,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   }, [moduloType, moduleConfig]);
 
   // Reset drills on filter change
-  useEffect(() => { setDrillDown(null); setMotivoDrill(null); }, [selectedDivision]);
+  useEffect(() => { setDrillDown(null); setMotivoDrill(null); }, [selectedDivision, selectedPerspective]);
 
   if (!moduleConfig) {
     return <p className="text-sm text-rd">Módulo no encontrado: {moduleSlug}</p>;
@@ -98,10 +99,13 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const totalPropio = propioEvents.length;
   const totalRival = rivalEvents.length;
 
+  // Eventos activos según perspectiva seleccionada
+  const activeEvents = selectedPerspective === "propio" ? propioEvents : rivalEvents;
+
   // Ganados / Perdidos
-  const ganados = propioEvents.filter((e) => isPositiveResult(e.data?.resultado || "", moduloType));
-  const perdidos = propioEvents.filter((e) => !ganados.includes(e));
-  const ganadosPct = propioEvents.length > 0 ? Math.round((ganados.length / propioEvents.length) * 100) : 0;
+  const ganados = activeEvents.filter((e) => isPositiveResult(e.data?.resultado || "", moduloType));
+  const perdidos = activeEvents.filter((e) => !ganados.includes(e));
+  const ganadosPct = activeEvents.length > 0 ? Math.round((ganados.length / activeEvents.length) * 100) : 0;
 
   // Drill-down effectiveness
   const drillEvents = drillDown === "ganados" ? ganados : drillDown === "perdidos" ? perdidos : [];
@@ -113,7 +117,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const RED_SHADES = ["#C8102E", "#F87171", "#DC2626", "#991B1B", "#FCA5A5"];
   const motivoPositive: Record<string, number> = {};
   const motivoNegative: Record<string, number> = {};
-  propioEvents.forEach((e) => {
+  activeEvents.forEach((e) => {
     const motivo = e.data?.motivo || "?";
     const resultado = e.data?.resultado || "";
     if (isPositiveResult(resultado, moduloType)) motivoPositive[motivo] = (motivoPositive[motivo] || 0) + 1;
@@ -129,13 +133,13 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const motivoTotal = motivoSegments.reduce((s, seg) => s + seg.value, 0);
 
   // Motivo drill-down
-  const motivoDrillEvents = motivoDrill ? propioEvents.filter((e) => e.data?.motivo === motivoDrill) : [];
+  const motivoDrillEvents = motivoDrill ? activeEvents.filter((e) => e.data?.motivo === motivoDrill) : [];
   const motivoDrillResultados: Record<string, number> = {};
   motivoDrillEvents.forEach((e) => { const r = e.data?.resultado || "?"; motivoDrillResultados[r] = (motivoDrillResultados[r] || 0) + 1; });
 
   // Progression by match (per-match effectiveness)
   const matchMap = new Map<string, { fechaNumero: number; rivalName: string; ganados: number; total: number }>();
-  propioEvents.forEach((e) => {
+  activeEvents.forEach((e) => {
     const pid = e.partido_id;
     if (!matchMap.has(pid)) {
       matchMap.set(pid, {
@@ -216,18 +220,39 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
               <p className="text-[10px] text-g-4 font-semibold uppercase">Total de {moduleConfig.label}</p>
               <p className="text-2xl font-extrabold text-nv">{totalAll}</p>
             </div>
-            <div className="card-compact text-center">
-              <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
-              <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
-            </div>
-            <div className="card-compact text-center">
-              <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
-              <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
-            </div>
+            {hasPerspective ? (
+              <>
+                <button
+                  onClick={() => setSelectedPerspective("propio")}
+                  className={`card-compact text-center transition-all ${selectedPerspective === "propio" ? "ring-2 ring-gn" : "opacity-60 hover:opacity-80"}`}
+                >
+                  <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
+                  <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
+                </button>
+                <button
+                  onClick={() => setSelectedPerspective("rival")}
+                  className={`card-compact text-center transition-all ${selectedPerspective === "rival" ? "ring-2 ring-rd" : "opacity-60 hover:opacity-80"}`}
+                >
+                  <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
+                  <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="card-compact text-center">
+                  <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
+                  <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
+                </div>
+                <div className="card-compact text-center">
+                  <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
+                  <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Donut: Efectividad */}
-          {propioEvents.length > 0 && (
+          {activeEvents.length > 0 && (
             <div className="card mb-6">
               <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">
                 Efectividad — Tocá para ver detalle
