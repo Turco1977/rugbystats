@@ -40,7 +40,7 @@ const DIVISIONS = ["M19", "M17", "M16", "M15"];
 
 export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const [selectedDivision, setSelectedDivision] = useState("M19");
-  const [selectedPerspective, setSelectedPerspective] = useState<"propio" | "rival">("propio");
+  const [selectedPerspective, setSelectedPerspective] = useState<"total" | "propio" | "rival">("total");
   const [eventos, setEventos] = useState<RawEvento[]>([]);
   const [loading, setLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
@@ -100,7 +100,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const totalRival = rivalEvents.length;
 
   // Eventos activos según perspectiva seleccionada
-  const activeEvents = selectedPerspective === "propio" ? propioEvents : rivalEvents;
+  const activeEvents = selectedPerspective === "total" ? filtered : selectedPerspective === "propio" ? propioEvents : rivalEvents;
 
   // Ganados / Perdidos
   const ganados = activeEvents.filter((e) => isPositiveResult(e.data?.resultado || "", moduloType));
@@ -216,12 +216,17 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
         <>
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="card-compact text-center">
-              <p className="text-[10px] text-g-4 font-semibold uppercase">Total de {moduleConfig.label}</p>
-              <p className="text-2xl font-extrabold text-nv">{totalAll}</p>
-            </div>
             {hasPerspective ? (
               <>
+                <button
+                  onClick={() => setSelectedPerspective("total")}
+                  className="card-compact text-center transition-all"
+                  style={selectedPerspective === "total" ? { border: "2px solid #6366F1" } : { opacity: 0.55 }}
+                >
+                  <p className="text-[10px] text-g-4 font-semibold uppercase">Total</p>
+                  <p className="text-2xl font-extrabold text-nv">{totalAll}</p>
+                  {selectedPerspective === "total" && <p className="text-[9px] text-nv mt-0.5">● viendo</p>}
+                </button>
                 <button
                   onClick={() => setSelectedPerspective("propio")}
                   className="card-compact text-center transition-all"
@@ -229,9 +234,7 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
                 >
                   <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
                   <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
-                  {selectedPerspective === "propio" && (
-                    <p className="text-[9px] text-gn mt-0.5">● viendo</p>
-                  )}
+                  {selectedPerspective === "propio" && <p className="text-[9px] text-gn mt-0.5">● viendo</p>}
                 </button>
                 <button
                   onClick={() => setSelectedPerspective("rival")}
@@ -240,13 +243,15 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
                 >
                   <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
                   <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
-                  {selectedPerspective === "rival" && (
-                    <p className="text-[9px] text-rd mt-0.5">● viendo</p>
-                  )}
+                  {selectedPerspective === "rival" && <p className="text-[9px] text-rd mt-0.5">● viendo</p>}
                 </button>
               </>
             ) : (
               <>
+                <div className="card-compact text-center">
+                  <p className="text-[10px] text-g-4 font-semibold uppercase">Total</p>
+                  <p className="text-2xl font-extrabold text-nv">{totalAll}</p>
+                </div>
                 <div className="card-compact text-center">
                   <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
                   <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
