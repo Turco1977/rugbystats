@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MODULE_CONFIG, MODULE_SLUG_MAP } from "@/lib/constants/modules";
 import { DonutChart } from "./donut-chart";
 import { TrendChart } from "./trend-chart";
+import { InformeModulo } from "./informe-modulo";
 
 interface ModuleDetailPageProps {
   moduleSlug: string;
@@ -41,6 +42,7 @@ const DIVISIONS = ["M19", "M17", "M16", "M15"];
 export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
   const [selectedDivision, setSelectedDivision] = useState("M19");
   const [selectedPerspective, setSelectedPerspective] = useState<"total" | "propio" | "rival">("total");
+  const [showInforme, setShowInforme] = useState(false);
   const [eventos, setEventos] = useState<RawEvento[]>([]);
   const [loading, setLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
@@ -160,6 +162,14 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
       value: m.total > 0 ? Math.round((m.ganados / m.total) * 100) : 0,
     }));
 
+  // Motivo stats para el informe
+  const motivStatsForInforme = moduleConfig.motivos.map((m) => {
+    const g = motivoPositive[m.key] ?? 0;
+    const p = motivoNegative[m.key] ?? 0;
+    const total = g + p;
+    return { key: m.key, label: m.label, ganados: g, perdidos: p, total, pct: total > 0 ? Math.round((g / total) * 100) : 0 };
+  }).filter((m) => m.total > 0);
+
   // Rama comparison
   const ramaStats: Record<string, { ganados: number; total: number }> = {};
   eventos.filter((e) => e.partidos?.division === selectedDivision).forEach((e) => {
@@ -183,6 +193,14 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
             </p>
           </div>
         </div>
+        {!loading && totalAll > 0 && (
+          <button
+            onClick={() => setShowInforme(true)}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-md bg-dk-2 border border-dk-3 text-g-4 hover:text-nv hover:border-nv transition-colors"
+          >
+            📤 Informe
+          </button>
+        )}
       </div>
 
       <div className={`h-1 rounded-full ${moduleConfig.color} mb-4`} />
@@ -473,6 +491,24 @@ export function ModuleDetailPage({ moduleSlug }: ModuleDetailPageProps) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Informe modal */}
+      {showInforme && (
+        <InformeModulo
+          moduleConfig={moduleConfig}
+          selectedDivision={selectedDivision}
+          selectedPerspective={selectedPerspective}
+          totalAll={totalAll}
+          totalPropio={totalPropio}
+          totalRival={totalRival}
+          ganados={ganados.length}
+          perdidos={perdidos.length}
+          ganadosPct={ganadosPct}
+          motivStats={motivStatsForInforme}
+          perMatchData={perMatchData}
+          onClose={() => setShowInforme(false)}
+        />
       )}
     </div>
   );
