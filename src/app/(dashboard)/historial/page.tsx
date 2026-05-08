@@ -49,6 +49,7 @@ export default function HistorialPage() {
   const [allEventos, setAllEventos] = useState<EventoHistorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [selectedPerspective, setSelectedPerspective] = useState<"total" | "propio" | "rival">("total");
   const [drillDown, setDrillDown] = useState<"ganados" | "perdidos" | null>(null);
   const [motivoDrill, setMotivoDrill] = useState<string | null>(null);
 
@@ -91,7 +92,7 @@ export default function HistorialPage() {
   }, [selectedDivision]);
 
   // Reset on filter change
-  useEffect(() => { setDrillDown(null); setMotivoDrill(null); }, [selectedModule]);
+  useEffect(() => { setDrillDown(null); setMotivoDrill(null); setSelectedPerspective("total"); }, [selectedModule]);
 
   // Available ramas from data
   const availableRamas = [...new Set(allPartidos.map((p) => p.rama).filter(Boolean))].sort();
@@ -133,9 +134,11 @@ export default function HistorialPage() {
     const totalRival = rivalEvents.length;
     const totalAll = moduleEvents.length;
 
-    const ganados = propioEvents.filter((ev) => isPositiveResult(ev.data?.resultado || "", selectedModule));
-    const perdidos = propioEvents.filter((ev) => !ganados.includes(ev));
-    const ganadosPct = propioEvents.length > 0 ? Math.round((ganados.length / propioEvents.length) * 100) : 0;
+    const activeEvents = selectedPerspective === "total" ? moduleEvents : selectedPerspective === "propio" ? propioEvents : rivalEvents;
+
+    const ganados = activeEvents.filter((ev) => isPositiveResult(ev.data?.resultado || "", selectedModule));
+    const perdidos = activeEvents.filter((ev) => !ganados.includes(ev));
+    const ganadosPct = activeEvents.length > 0 ? Math.round((ganados.length / activeEvents.length) * 100) : 0;
 
     const drillEvents = drillDown === "ganados" ? ganados : drillDown === "perdidos" ? perdidos : [];
     const drillMotivos: Record<string, number> = {};
@@ -145,7 +148,7 @@ export default function HistorialPage() {
     const RED_SHADES = ["#C8102E", "#F87171", "#DC2626", "#991B1B", "#FCA5A5"];
     const motivoPositive: Record<string, number> = {};
     const motivoNegative: Record<string, number> = {};
-    propioEvents.forEach((ev) => {
+    activeEvents.forEach((ev) => {
       const motivo = ev.data?.motivo || "?";
       const resultado = ev.data?.resultado || "";
       if (isPositiveResult(resultado, selectedModule)) motivoPositive[motivo] = (motivoPositive[motivo] || 0) + 1;
@@ -160,13 +163,13 @@ export default function HistorialPage() {
     });
     const motivoTotal = motivoSegments.reduce((s, seg) => s + seg.value, 0);
 
-    const motivoDrillEvents = motivoDrill ? propioEvents.filter((ev) => ev.data?.motivo === motivoDrill) : [];
+    const motivoDrillEvents = motivoDrill ? activeEvents.filter((ev) => ev.data?.motivo === motivoDrill) : [];
     const motivoDrillResultados: Record<string, number> = {};
     motivoDrillEvents.forEach((ev) => { const r = ev.data?.resultado || "?"; motivoDrillResultados[r] = (motivoDrillResultados[r] || 0) + 1; });
 
     // Progression by match
     const matchMap = new Map<string, { fechaNumero: number; rivalName: string; ganados: number; total: number }>();
-    propioEvents.forEach((ev) => {
+    activeEvents.forEach((ev) => {
       const p = partidos.find((p) => p.id === ev.partido_id);
       const pid = ev.partido_id;
       if (!matchMap.has(pid)) {
@@ -200,13 +203,35 @@ export default function HistorialPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="card-compact text-center"><p className="text-[10px] text-g-4 font-semibold uppercase">Total</p><p className="text-2xl font-extrabold text-nv">{totalAll}</p></div>
-          <div className="card-compact text-center"><p className="text-[10px] text-gn font-semibold uppercase">Propio</p><p className="text-2xl font-extrabold text-gn">{totalPropio}</p></div>
-          <div className="card-compact text-center"><p className="text-[10px] text-rd font-semibold uppercase">Rival</p><p className="text-2xl font-extrabold text-rd">{totalRival}</p></div>
+          {hasPerspective ? (
+            <>
+              <button onClick={() => setSelectedPerspective("total")} className="card-compact text-center transition-all" style={selectedPerspective === "total" ? { border: "2px solid #6366F1" } : { opacity: 0.55 }}>
+                <p className="text-[10px] text-g-4 font-semibold uppercase">Total</p>
+                <p className="text-2xl font-extrabold text-nv">{totalAll}</p>
+                {selectedPerspective === "total" && <p className="text-[9px] text-nv mt-0.5">● viendo</p>}
+              </button>
+              <button onClick={() => setSelectedPerspective("propio")} className="card-compact text-center transition-all" style={selectedPerspective === "propio" ? { border: "2px solid #10B981" } : { opacity: 0.55 }}>
+                <p className="text-[10px] text-gn font-semibold uppercase">Propio</p>
+                <p className="text-2xl font-extrabold text-gn">{totalPropio}</p>
+                {selectedPerspective === "propio" && <p className="text-[9px] text-gn mt-0.5">● viendo</p>}
+              </button>
+              <button onClick={() => setSelectedPerspective("rival")} className="card-compact text-center transition-all" style={selectedPerspective === "rival" ? { border: "2px solid #C8102E" } : { opacity: 0.55 }}>
+                <p className="text-[10px] text-rd font-semibold uppercase">Rival</p>
+                <p className="text-2xl font-extrabold text-rd">{totalRival}</p>
+                {selectedPerspective === "rival" && <p className="text-[9px] text-rd mt-0.5">● viendo</p>}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="card-compact text-center"><p className="text-[10px] text-g-4 font-semibold uppercase">Total</p><p className="text-2xl font-extrabold text-nv">{totalAll}</p></div>
+              <div className="card-compact text-center"><p className="text-[10px] text-gn font-semibold uppercase">Propio</p><p className="text-2xl font-extrabold text-gn">{totalPropio}</p></div>
+              <div className="card-compact text-center"><p className="text-[10px] text-rd font-semibold uppercase">Rival</p><p className="text-2xl font-extrabold text-rd">{totalRival}</p></div>
+            </>
+          )}
         </div>
 
         {/* Donut: Efectividad */}
-        {propioEvents.length > 0 && (
+        {activeEvents.length > 0 && (
           <div className="card mb-6">
             <h3 className="text-[10px] font-bold text-g-4 uppercase tracking-wider mb-3">Efectividad — Tocá para ver detalle</h3>
             <div className="flex flex-col items-center mb-3">
